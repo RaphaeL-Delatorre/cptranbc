@@ -119,7 +119,78 @@ const AIT = () => {
     }
     return uploadedUrls;
   };
+  // Validation helper: check if name has at least 2 words (name + surname)
+  const hasNameAndSurname = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    return parts.length >= 2 && parts.every(p => p.length > 0);
+  };
+
+  // Validation for each step
+  const validateStep = (step: number): { valid: boolean; message: string } => {
+    switch (step) {
+      case 1:
+        if (!formData.graduacao) return { valid: false, message: "Selecione sua graduação" };
+        if (!hasNameAndSurname(formData.nomeAgente)) return { valid: false, message: "Informe seu nome e sobrenome" };
+        return { valid: true, message: "" };
+      
+      case 2:
+        if (!formData.viatura) return { valid: false, message: "Selecione a viatura" };
+        if (!formData.primeiroHomemPatente) return { valid: false, message: "Selecione a patente do 1º Homem" };
+        if (!hasNameAndSurname(formData.primeiroHomem)) return { valid: false, message: "Informe nome e sobrenome do 1º Homem" };
+        if (!formData.segundoHomemPatente) return { valid: false, message: "Selecione a patente do 2º Homem" };
+        if (!hasNameAndSurname(formData.segundoHomem)) return { valid: false, message: "Informe nome e sobrenome do 2º Homem" };
+        return { valid: true, message: "" };
+      
+      case 3:
+        if (!formData.dataInicio || !formData.horaInicio) return { valid: false, message: "Informe a data e hora de início" };
+        if (!formData.dataTermino || !formData.horaTermino) return { valid: false, message: "Informe a data e hora de término" };
+        
+        // Build datetime objects for comparison
+        const startDateTime = new Date(`${formData.dataInicio}T${formData.horaInicio}`);
+        let endDateTime = new Date(`${formData.dataTermino}T${formData.horaTermino}`);
+        
+        // If end time is before start time and dates are the same, assume midnight crossing
+        if (formData.dataInicio === formData.dataTermino && endDateTime <= startDateTime) {
+          // Automatically adjust end date to next day for validation
+          return { valid: false, message: "O horário de término deve ser posterior ao de início. Se o patrulhamento passou da meia-noite, ajuste a data de término para o dia seguinte." };
+        }
+        
+        if (endDateTime <= startDateTime) {
+          return { valid: false, message: "O horário de término deve ser posterior ao de início" };
+        }
+        
+        return { valid: true, message: "" };
+      
+      case 4:
+        const hasCondutor = formData.nomeCondutor.trim() && formData.passaporteCondutor.trim();
+        const hasProprietario = formData.nomeProprietario.trim() && formData.passaporteProprietario.trim();
+        const hasVeiculo = formData.emplacamento.trim() && formData.marcaModelo.trim();
+        
+        if (!hasVeiculo) return { valid: false, message: "Informe os dados do veículo (emplacamento e marca/modelo)" };
+        if (!hasCondutor && !hasProprietario) return { valid: false, message: "Informe os dados do motorista ou do proprietário" };
+        
+        return { valid: true, message: "" };
+      
+      case 5:
+        if (formData.artigosInfringidos.length === 0) return { valid: false, message: "Selecione pelo menos 1 artigo infringido" };
+        if (formData.providenciasTomadas.length === 0) return { valid: false, message: "Selecione pelo menos 1 providência tomada" };
+        return { valid: true, message: "" };
+      
+      default:
+        return { valid: true, message: "" };
+    }
+  };
+
   const nextStep = () => {
+    const validation = validateStep(currentStep);
+    if (!validation.valid) {
+      toast({
+        title: "Campos obrigatórios",
+        description: validation.message,
+        variant: "destructive"
+      });
+      return;
+    }
     if (currentStep < totalSteps) {
       setCurrentStep(prev => prev + 1);
     }
@@ -281,7 +352,7 @@ const AIT = () => {
                     </div>
                     <div>
                       <Label htmlFor="primeiroHomem">Nome</Label>
-                      <Input id="primeiroHomem" value={formData.primeiroHomem} onChange={e => handleInputChange("primeiroHomem", e.target.value)} placeholder="Nome do condutor" />
+                      <Input id="primeiroHomem" value={formData.primeiroHomem} onChange={e => handleInputChange("primeiroHomem", e.target.value)} placeholder="Nome do motorista" />
                     </div>
                   </div>
                 </div>
@@ -303,7 +374,7 @@ const AIT = () => {
                     </div>
                     <div>
                       <Label htmlFor="segundoHomem">Nome</Label>
-                      <Input id="segundoHomem" value={formData.segundoHomem} onChange={e => handleInputChange("segundoHomem", e.target.value)} placeholder="Nome do patrulheiro" />
+                      <Input id="segundoHomem" value={formData.segundoHomem} onChange={e => handleInputChange("segundoHomem", e.target.value)} placeholder="Nome do encarregado" />
                     </div>
                   </div>
                 </div>
@@ -442,21 +513,21 @@ const AIT = () => {
               </div>
               <div>
                 <h3 className="font-display text-xl font-bold">Dados do Veículo</h3>
-                <p className="text-sm text-muted-foreground">Informações do condutor e veículo</p>
+                <p className="text-sm text-muted-foreground">Informações do motorista e veículo</p>
               </div>
             </div>
 
             <div className="space-y-6">
-              {/* Condutor */}
+              {/* Motorista */}
               <div className="p-4 bg-muted/50 rounded-xl space-y-4">
-                <h4 className="font-semibold text-foreground">Dados do Condutor</h4>
+                <h4 className="font-semibold text-foreground">Dados do Motorista</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="nomeCondutor">Nome do Condutor</Label>
+                    <Label htmlFor="nomeCondutor">Nome do Motorista</Label>
                     <Input id="nomeCondutor" value={formData.nomeCondutor} onChange={e => handleInputChange("nomeCondutor", e.target.value)} placeholder="Nome completo" />
                   </div>
                   <div>
-                    <Label htmlFor="passaporteCondutor">Passaporte do Condutor</Label>
+                    <Label htmlFor="passaporteCondutor">Passaporte do Motorista</Label>
                     <Input id="passaporteCondutor" value={formData.passaporteCondutor} onChange={e => handleInputChange("passaporteCondutor", e.target.value)} placeholder="Número do passaporte" />
                   </div>
                 </div>
@@ -588,7 +659,18 @@ const AIT = () => {
               {currentStep < totalSteps ? <Button onClick={nextStep} className="gap-2">
                   Próximo
                   <ChevronRight className="h-4 w-4" />
-                </Button> : <Button onClick={handleSubmit} className="gap-2 bg-primary hover:bg-primary/90" disabled={createAIT.isPending || uploading}>
+                </Button> : <Button onClick={() => {
+                  const validation = validateStep(5);
+                  if (!validation.valid) {
+                    toast({
+                      title: "Campos obrigatórios",
+                      description: validation.message,
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  handleSubmit();
+                }} className="gap-2 bg-primary hover:bg-primary/90" disabled={createAIT.isPending || uploading}>
                   {createAIT.isPending || uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Enviar AIT
                 </Button>}
