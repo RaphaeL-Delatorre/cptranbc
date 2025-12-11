@@ -9,9 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock } from "lucide-react";
 import { useCreateAIT } from "@/hooks/useAITs";
-import { useViaturas } from "@/hooks/useViaturas";
 import { useAuth } from "@/hooks/useAuth";
-import { patentes, artigos, providencias } from "@/lib/constants";
+import { patentes, artigos, providencias, viaturas, prefixosPorViatura } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 const initialFormData = {
   // Step 1 - Identificação do Agente
@@ -19,6 +18,7 @@ const initialFormData = {
   nomeAgente: "",
   // Step 2 - Equipe e Viatura
   viatura: "",
+  prefixo: "",
   primeiroHomem: "",
   primeiroHomemPatente: "",
   segundoHomem: "",
@@ -56,13 +56,18 @@ const AIT = () => {
   const {
     loading: authLoading
   } = useAuth();
-  const {
-    data: viaturas = [],
-    isLoading: viaturasLoading
-  } = useViaturas();
   const createAIT = useCreateAIT();
   const totalSteps = 5;
+  
+  // Get available prefixos based on selected viatura
+  const availablePrefixos = formData.viatura ? prefixosPorViatura[formData.viatura] || [] : [];
+  
   const handleInputChange = (field: string, value: string | string[]) => {
+    // Clear prefixo when viatura changes
+    if (field === "viatura") {
+      setFormData(prev => ({ ...prev, viatura: value as string, prefixo: "" }));
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -135,6 +140,7 @@ const AIT = () => {
       
       case 2:
         if (!formData.viatura) return { valid: false, message: "Selecione a viatura" };
+        if (!formData.prefixo) return { valid: false, message: "Selecione o prefixo" };
         if (!formData.primeiroHomemPatente) return { valid: false, message: "Selecione a patente do 1º Homem" };
         if (!hasNameAndSurname(formData.primeiroHomem)) return { valid: false, message: "Informe nome e sobrenome do 1º Homem" };
         if (!formData.segundoHomemPatente) return { valid: false, message: "Selecione a patente do 2º Homem" };
@@ -225,7 +231,7 @@ const AIT = () => {
         terceiro_homem_patente: formData.terceiroHomemPatente || undefined,
         quarto_homem: formData.quartoHomem || undefined,
         quarto_homem_patente: formData.quartoHomemPatente || undefined,
-        viatura: formData.viatura,
+        viatura: `${formData.viatura} - ${formData.prefixo}`,
         relatorio: formData.relatorio,
         nome_condutor: formData.nomeCondutor,
         passaporte_condutor: formData.passaporteCondutor,
@@ -256,8 +262,6 @@ const AIT = () => {
     }
   };
 
-  // Get selected viatura details
-  const selectedViatura = viaturas.find(v => v.prefixo === formData.viatura);
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -304,31 +308,37 @@ const AIT = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Viatura Selection - First */}
+              {/* Viatura e Prefixo - Side by Side */}
               <div className="p-4 bg-primary/5 rounded-xl space-y-3 border-2 border-primary/20">
                 <h4 className="font-semibold text-base text-primary">Viatura</h4>
-                <div>
-                  <Label>Selecione a Viatura</Label>
-                  <Select value={formData.viatura} onValueChange={v => handleInputChange("viatura", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a viatura" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {viaturas.map(v => <SelectItem key={v.prefixo} value={v.prefixo}>
-                          {v.tipo} - {v.prefixo}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Modelo da Unidade *</Label>
+                    <Select value={formData.viatura} onValueChange={v => handleInputChange("viatura", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o modelo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {viaturas.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Prefixo da Unidade *</Label>
+                    <Select 
+                      value={formData.prefixo} 
+                      onValueChange={v => handleInputChange("prefixo", v)}
+                      disabled={!formData.viatura}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o prefixo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePrefixos.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                {selectedViatura && <div className="flex items-center gap-4 pt-2">
-                    <div className="flex items-center gap-2">
-                      <Car className="h-5 w-5 text-primary" />
-                      <span className="font-semibold">{selectedViatura.tipo}</span>
-                    </div>
-                    <div className="px-3 py-1 bg-primary/20 rounded-full text-sm font-bold text-primary">
-                      {selectedViatura.prefixo}
-                    </div>
-                  </div>}
               </div>
 
               {/* Team Members */}
