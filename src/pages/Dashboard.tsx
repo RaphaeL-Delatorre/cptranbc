@@ -33,6 +33,7 @@ import { patentes } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
 import { useUsers, useCreateUserWithRole, useAssignRole, useRemoveRole, useDeleteUser, useUpdateUserPassword, useUpdateUser, type UserWithRole } from "@/hooks/useUsers";
+import { SettingsContent } from "@/components/dashboard/SettingsContent";
 
 type TabType = "dashboard" | "hierarquia" | "ait" | "usuarios" | "config";
 
@@ -589,159 +590,166 @@ const Dashboard = () => {
                   
                   <div className="space-y-6">
                     {/* Seção 1: Policial Responsável pelo AIT */}
-                    <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-                      <h4 className="font-semibold text-primary flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">1</span>
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">1</span>
                         Policial Responsável pelo AIT
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Graduação</p>
-                          <p className="font-medium">{selectedAIT.graduacao}</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Graduação</p>
+                          <p className="text-base font-semibold">{selectedAIT.graduacao}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Policial</p>
-                          <p className="font-medium">{selectedAIT.nome_agente}</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Nome do Policial</p>
+                          <p className="text-base font-semibold">{selectedAIT.nome_agente}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Seção 2: Equipe e Viatura */}
-                    <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-                      <h4 className="font-semibold text-primary flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">2</span>
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">2</span>
                         Equipe e Viatura
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Viatura</p>
-                          <p className="font-medium">{selectedAIT.viatura}</p>
+                      
+                      {/* Viatura */}
+                      <div className="pb-4 border-b border-border/50">
+                        <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Viatura</p>
+                        <p className="text-lg font-semibold">{selectedAIT.viatura}</p>
+                      </div>
+                      
+                      {/* Encarregados */}
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground uppercase tracking-wide">Encarregados</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="p-3 bg-background/50 rounded-lg">
+                            <p className="text-xs text-muted-foreground mb-1">1º Homem (Motorista)</p>
+                            <p className="text-base font-medium">{selectedAIT.primeiro_homem_patente ? `${selectedAIT.primeiro_homem_patente} ` : ''}{selectedAIT.primeiro_homem}</p>
+                          </div>
+                          {selectedAIT.segundo_homem && (
+                            <div className="p-3 bg-background/50 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">2º Homem (Encarregado)</p>
+                              <p className="text-base font-medium">{selectedAIT.segundo_homem_patente ? `${selectedAIT.segundo_homem_patente} ` : ''}{selectedAIT.segundo_homem}</p>
+                            </div>
+                          )}
+                          {selectedAIT.terceiro_homem && (
+                            <div className="p-3 bg-background/50 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">3º Homem</p>
+                              <p className="text-base font-medium">{selectedAIT.terceiro_homem_patente ? `${selectedAIT.terceiro_homem_patente} ` : ''}{selectedAIT.terceiro_homem}</p>
+                            </div>
+                          )}
+                          {selectedAIT.quarto_homem && (
+                            <div className="p-3 bg-background/50 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">4º Homem</p>
+                              <p className="text-base font-medium">{selectedAIT.quarto_homem_patente ? `${selectedAIT.quarto_homem_patente} ` : ''}{selectedAIT.quarto_homem}</p>
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">1º Homem (Motorista)</p>
-                          <p className="font-medium">{selectedAIT.primeiro_homem_patente ? `${selectedAIT.primeiro_homem_patente} ` : ''}{selectedAIT.primeiro_homem}</p>
-                        </div>
-                        {selectedAIT.segundo_homem && (
-                          <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">2º Homem (Encarregado)</p>
-                            <p className="font-medium">{selectedAIT.segundo_homem_patente ? `${selectedAIT.segundo_homem_patente} ` : ''}{selectedAIT.segundo_homem}</p>
-                          </div>
-                        )}
-                        {selectedAIT.terceiro_homem && (
-                          <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">3º Homem</p>
-                            <p className="font-medium">{selectedAIT.terceiro_homem_patente ? `${selectedAIT.terceiro_homem_patente} ` : ''}{selectedAIT.terceiro_homem}</p>
-                          </div>
-                        )}
-                        {selectedAIT.quarto_homem && (
-                          <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">4º Homem</p>
-                            <p className="font-medium">{selectedAIT.quarto_homem_patente ? `${selectedAIT.quarto_homem_patente} ` : ''}{selectedAIT.quarto_homem}</p>
-                          </div>
-                        )}
                       </div>
                     </div>
 
                     {/* Seção 3: Data/Hora e Relatório */}
-                    <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-                      <h4 className="font-semibold text-primary flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">3</span>
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">3</span>
                         Data/Hora e Relatório
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {selectedAIT.data_inicio && (
                           <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Data/Hora de Início</p>
-                            <p className="font-medium">
+                            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Data/Hora de Início</p>
+                            <p className="text-base font-semibold">
                               {new Date(selectedAIT.data_inicio).toLocaleDateString('pt-BR')} às {new Date(selectedAIT.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         )}
                         {selectedAIT.data_termino && (
                           <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Data/Hora de Término</p>
-                            <p className="font-medium">
+                            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Data/Hora de Término</p>
+                            <p className="text-base font-semibold">
                               {new Date(selectedAIT.data_termino).toLocaleDateString('pt-BR')} às {new Date(selectedAIT.data_termino).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         )}
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Relatório</p>
-                        <p className="text-sm bg-background p-4 rounded-lg border border-border/50 whitespace-pre-wrap">{selectedAIT.relatorio}</p>
+                        <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">Relatório</p>
+                        <p className="text-base bg-background p-4 rounded-lg border border-border/50 whitespace-pre-wrap">{selectedAIT.relatorio}</p>
                       </div>
                     </div>
 
                     {/* Seção 4: Dados do Motorista/Proprietário/Veículo */}
-                    <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-                      <h4 className="font-semibold text-primary flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">4</span>
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">4</span>
                         Motorista, Proprietário e Veículo
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Motorista</p>
-                          <p className="font-medium">{selectedAIT.nome_condutor}</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Nome do Motorista</p>
+                          <p className="text-base font-semibold">{selectedAIT.nome_condutor}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Passaporte do Motorista</p>
-                          <p className="font-medium font-mono">{selectedAIT.passaporte_condutor}</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Passaporte do Motorista</p>
+                          <p className="text-base font-semibold font-mono">{selectedAIT.passaporte_condutor}</p>
                         </div>
                         {selectedAIT.nome_proprietario && (
                           <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Proprietário</p>
-                            <p className="font-medium">{selectedAIT.nome_proprietario}</p>
+                            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Nome do Proprietário</p>
+                            <p className="text-base font-semibold">{selectedAIT.nome_proprietario}</p>
                           </div>
                         )}
                         {selectedAIT.passaporte_proprietario && (
                           <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Passaporte do Proprietário</p>
-                            <p className="font-medium font-mono">{selectedAIT.passaporte_proprietario}</p>
+                            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Passaporte do Proprietário</p>
+                            <p className="text-base font-semibold font-mono">{selectedAIT.passaporte_proprietario}</p>
                           </div>
                         )}
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Marca/Modelo</p>
-                          <p className="font-medium">{selectedAIT.marca_modelo}</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Marca/Modelo</p>
+                          <p className="text-base font-semibold">{selectedAIT.marca_modelo}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Emplacamento</p>
-                          <p className="font-medium font-mono text-lg">{selectedAIT.emplacamento}</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">Emplacamento</p>
+                          <p className="text-lg font-bold font-mono">{selectedAIT.emplacamento}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Seção 5: Artigos e Providências */}
-                    <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-                      <h4 className="font-semibold text-primary flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">5</span>
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">5</span>
                         Artigos Infringidos e Providências
                       </h4>
                       <div className="space-y-4">
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Artigos Infringidos</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">Artigos Infringidos</p>
                           <div className="flex flex-wrap gap-2">
                             {selectedAIT.artigos_infringidos?.length > 0 ? (
                               selectedAIT.artigos_infringidos.map((art) => (
-                                <span key={art} className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                                <span key={art} className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-base font-semibold">
                                   {art}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-muted-foreground text-sm">Nenhum artigo informado</span>
+                              <span className="text-muted-foreground">Nenhum artigo informado</span>
                             )}
                           </div>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Providências Tomadas</p>
+                          <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">Providências Tomadas</p>
                           <div className="flex flex-wrap gap-2">
                             {selectedAIT.providencias_tomadas?.length > 0 ? (
                               selectedAIT.providencias_tomadas.map((prov) => (
-                                <span key={prov} className="px-3 py-1.5 bg-secondary/10 text-secondary rounded-lg text-sm font-medium">
+                                <span key={prov} className="px-4 py-2 bg-secondary/10 text-secondary rounded-lg text-base font-semibold">
                                   {prov}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-muted-foreground text-sm">Nenhuma providência informada</span>
+                              <span className="text-muted-foreground">Nenhuma providência informada</span>
                             )}
                           </div>
                         </div>
@@ -1173,51 +1181,7 @@ const Dashboard = () => {
         );
 
       case "config":
-        return (
-          <div className="space-y-6">
-            <h2 className="font-display text-2xl font-bold">Configurações</h2>
-            
-            {userRole === "admin" && (
-              <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-                <h3 className="font-display text-lg font-bold mb-4">Configurações do Sistema</h3>
-                <p className="text-muted-foreground mb-4">
-                  Gerencie as configurações gerais do sistema administrativo.
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Notificações por E-mail</p>
-                      <p className="text-sm text-muted-foreground">Receber notificações de novos AITs</p>
-                    </div>
-                    <Button variant="outline" size="sm">Configurar</Button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Backup do Sistema</p>
-                      <p className="text-sm text-muted-foreground">Dados salvos automaticamente</p>
-                    </div>
-                    <Button variant="outline" size="sm">Ver Status</Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-              <h3 className="font-display text-lg font-bold mb-4">Minha Conta</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label>Nome</Label>
-                  <Input defaultValue="Administrador" />
-                </div>
-                <div>
-                  <Label>E-mail</Label>
-                  <Input defaultValue="admin@transito.com" />
-                </div>
-                <Button>Salvar Alterações</Button>
-              </div>
-            </div>
-          </div>
-        );
+        return <SettingsContent />;
 
       default:
         return null;
@@ -1287,7 +1251,7 @@ const Dashboard = () => {
               Usuários
             </button>
           )}
-          {userRole === "admin" && (
+          {(userRole === "admin" || userRole === "moderador") && (
             <button
               onClick={() => setActiveTab("config")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${

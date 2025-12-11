@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { patentes } from "@/lib/constants";
 import type { Database } from "@/integrations/supabase/types";
 
 type HierarquiaRow = Database["public"]["Tables"]["hierarquia"]["Row"];
@@ -16,6 +17,12 @@ export interface CreateHierarquiaData {
   data_entrada: string;
 }
 
+// Helper function to get patente order (lower index = higher rank)
+const getPatenteOrder = (patente: string): number => {
+  const index = patentes.indexOf(patente);
+  return index === -1 ? patentes.length : index;
+};
+
 export const useHierarquia = () => {
   return useQuery({
     queryKey: ["hierarquia"],
@@ -26,7 +33,13 @@ export const useHierarquia = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as HierarquiaMembro[];
+      
+      // Sort by patente rank (Coronel first, Soldado last)
+      const sortedData = [...(data || [])].sort((a, b) => {
+        return getPatenteOrder(a.patente) - getPatenteOrder(b.patente);
+      });
+      
+      return sortedData as HierarquiaMembro[];
     },
   });
 };
