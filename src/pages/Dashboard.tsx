@@ -588,11 +588,11 @@ const Dashboard = () => {
                   </div>
                   
                   <div className="space-y-6">
-                    {/* Seção 1: Identificação do Agente */}
+                    {/* Seção 1: Policial Responsável pelo AIT */}
                     <div className="bg-muted/30 rounded-xl p-4 space-y-3">
                       <h4 className="font-semibold text-primary flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">1</span>
-                        Identificação do Agente
+                        Policial Responsável pelo AIT
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -600,7 +600,7 @@ const Dashboard = () => {
                           <p className="font-medium">{selectedAIT.graduacao}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Agente</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Policial</p>
                           <p className="font-medium">{selectedAIT.nome_agente}</p>
                         </div>
                       </div>
@@ -618,12 +618,12 @@ const Dashboard = () => {
                           <p className="font-medium">{selectedAIT.viatura}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">1º Homem (Condutor)</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">1º Homem (Motorista)</p>
                           <p className="font-medium">{selectedAIT.primeiro_homem_patente ? `${selectedAIT.primeiro_homem_patente} ` : ''}{selectedAIT.primeiro_homem}</p>
                         </div>
                         {selectedAIT.segundo_homem && (
                           <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">2º Homem</p>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">2º Homem (Encarregado)</p>
                             <p className="font-medium">{selectedAIT.segundo_homem_patente ? `${selectedAIT.segundo_homem_patente} ` : ''}{selectedAIT.segundo_homem}</p>
                           </div>
                         )}
@@ -672,19 +672,19 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* Seção 4: Dados do Condutor/Proprietário/Veículo */}
+                    {/* Seção 4: Dados do Motorista/Proprietário/Veículo */}
                     <div className="bg-muted/30 rounded-xl p-4 space-y-3">
                       <h4 className="font-semibold text-primary flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">4</span>
-                        Condutor, Proprietário e Veículo
+                        Motorista, Proprietário e Veículo
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Condutor</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Nome do Motorista</p>
                           <p className="font-medium">{selectedAIT.nome_condutor}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Passaporte do Condutor</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Passaporte do Motorista</p>
                           <p className="font-medium font-mono">{selectedAIT.passaporte_condutor}</p>
                         </div>
                         {selectedAIT.nome_proprietario && (
@@ -817,8 +817,8 @@ const Dashboard = () => {
                     <thead className="bg-muted/50">
                       <tr>
                         <th className="text-left p-4 font-semibold text-sm">ID</th>
-                        <th className="text-left p-4 font-semibold text-sm">Agente</th>
-                        <th className="text-left p-4 font-semibold text-sm">Condutor</th>
+                        <th className="text-left p-4 font-semibold text-sm">Policial</th>
+                        <th className="text-left p-4 font-semibold text-sm">Motorista</th>
                         <th className="text-left p-4 font-semibold text-sm">Placa</th>
                         <th className="text-left p-4 font-semibold text-sm">Data</th>
                         <th className="text-left p-4 font-semibold text-sm">Status</th>
