@@ -43,3 +43,16 @@ export const providencias = [
   "Prisão do Condutor",
   "Sem Providências",
 ];
+
+export const viaturas = ["Ranger", "XT Rocam"] as const;
+
+export const prefixosPorViatura: Record<string, string[]> = {
+  "Ranger": [
+    "T-01000 (Comando Trânsito)",
+    "T-01112",
+    "T-01113",
+    "T-01115",
+    "T-01118",
+  ],
+  "XT Rocam": ["T-01112-11"],
+};
