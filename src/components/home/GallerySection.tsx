@@ -40,13 +40,25 @@ export const GallerySection = () => {
           <p className="text-muted-foreground">Operações e Atividades</p>
         </div>
 
-        <div className="relative max-w-5xl mx-auto">
-          {/* Main image */}
-          <div className="relative aspect-video rounded-2xl overflow-hidden shadow-xl border border-border/50">
+        <div className="relative max-w-5xl mx-auto flex items-center gap-4">
+          {/* Left Arrow - Outside image */}
+          {images.length > 1 && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 bg-background/80 backdrop-blur-sm hover:bg-background border-primary/30 hover:border-primary"
+              onClick={prevImage}
+            >
+              <ChevronLeft className="h-5 w-5 text-primary" />
+            </Button>
+          )}
+
+          {/* Main image with hover zoom */}
+          <div className="flex-1 relative aspect-video rounded-2xl overflow-hidden shadow-xl border border-border/50 group">
             <img
               src={images[currentIndex].image_url}
               alt={images[currentIndex].title || `Imagem ${currentIndex + 1}`}
-              className="w-full h-full object-cover transition-opacity duration-500"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             {images[currentIndex].title && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
@@ -55,26 +67,16 @@ export const GallerySection = () => {
             )}
           </div>
 
-          {/* Navigation buttons - only arrows */}
+          {/* Right Arrow - Outside image */}
           {images.length > 1 && (
-            <>
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background"
-                onClick={prevImage}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background"
-                onClick={nextImage}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 bg-background/80 backdrop-blur-sm hover:bg-background border-primary/30 hover:border-primary"
+              onClick={nextImage}
+            >
+              <ChevronRight className="h-5 w-5 text-primary" />
+            </Button>
           )}
         </div>
       </div>

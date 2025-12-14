@@ -34,6 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
 import { useUsers, useCreateUserWithRole, useAssignRole, useRemoveRole, useDeleteUser, useUpdateUserPassword, useUpdateUser, type UserWithRole } from "@/hooks/useUsers";
 import { SettingsContent } from "@/components/dashboard/SettingsContent";
+import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts";
 
 type TabType = "dashboard" | "hierarquia" | "ait" | "usuarios" | "config";
 
@@ -318,6 +319,9 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+
+            {/* Statistics Charts */}
+            <AITStatisticsCharts />
           </div>
         );
 
@@ -756,13 +760,14 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* Imagens */}
-                    {selectedAIT.imagens && selectedAIT.imagens.length > 0 && (
-                      <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-                        <h4 className="font-semibold text-primary flex items-center gap-2">
-                          <Camera className="h-4 w-4" />
-                          Imagens da Autuação ({selectedAIT.imagens.length})
-                        </h4>
+                    {/* Seção 6: Imagens */}
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">6</span>
+                        <Camera className="h-5 w-5" />
+                        Imagens da Autuação
+                      </h4>
+                      {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           {selectedAIT.imagens.map((img, idx) => (
                             <a 
@@ -776,12 +781,17 @@ const Dashboard = () => {
                                 src={img} 
                                 alt={`Imagem ${idx + 1}`} 
                                 className="w-full h-full object-cover hover:scale-105 transition-transform"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                                }}
                               />
                             </a>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <p className="text-muted-foreground">Nenhuma imagem anexada</p>
+                      )}
+                    </div>
                   </div>
 
                   {selectedAIT.status === "pendente" && (
