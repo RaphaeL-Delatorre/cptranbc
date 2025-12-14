@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGallery } from "@/hooks/useGallery";
@@ -6,6 +6,17 @@ import { useGallery } from "@/hooks/useGallery";
 export const GallerySection = () => {
   const { data: images = [], isLoading } = useGallery();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Auto-rotate every 3 seconds
+  useEffect(() => {
+    if (images.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [images.length]);
 
   if (isLoading || images.length === 0) {
     return null;
@@ -35,7 +46,7 @@ export const GallerySection = () => {
             <img
               src={images[currentIndex].image_url}
               alt={images[currentIndex].title || `Imagem ${currentIndex + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-opacity duration-500"
             />
             {images[currentIndex].title && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
@@ -44,7 +55,7 @@ export const GallerySection = () => {
             )}
           </div>
 
-          {/* Navigation buttons */}
+          {/* Navigation buttons - only arrows */}
           {images.length > 1 && (
             <>
               <Button
@@ -64,29 +75,6 @@ export const GallerySection = () => {
                 <ChevronRight className="h-5 w-5" />
               </Button>
             </>
-          )}
-
-          {/* Thumbnails */}
-          {images.length > 1 && (
-            <div className="flex justify-center gap-3 mt-6">
-              {images.map((image, index) => (
-                <button
-                  key={image.id}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                    index === currentIndex
-                      ? "border-primary scale-105"
-                      : "border-transparent opacity-60 hover:opacity-100"
-                  }`}
-                >
-                  <img
-                    src={image.image_url}
-                    alt={image.title || `Thumbnail ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
           )}
         </div>
       </div>
