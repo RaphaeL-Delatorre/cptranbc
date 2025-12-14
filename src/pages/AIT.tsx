@@ -656,28 +656,40 @@ const AIT = () => {
         </div>
       </MainLayout>;
   }
+  const stepNames = [
+    "Informações",
+    "Equipe e Viatura", 
+    "Complementos",
+    "Dados do Veículo",
+    "Artigos e Providências"
+  ];
+
   return <MainLayout>
       {/* Hero Section */}
       <section className="relative py-16 hero-gradient">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-display text-4xl md:text-5xl font-bold text-secondary-foreground mb-4">
-            REGISTRAR <span className="text-primary">AIT</span>
+            AIT - <span className="text-primary">Auto de Infração de Trânsito</span>
           </h1>
-          <p className="text-secondary-foreground/80 max-w-2xl mx-auto">
-            Auto de Infração de Trânsito
-          </p>
         </div>
       </section>
 
       {/* Form Section */}
       <section className="py-12 bg-background">
-        <div className="container mx-auto px-4 max-w-3xl">
-          {/* Progress Bar */}
+        <div className="container mx-auto px-4 max-w-4xl">
+          {/* Progress Bar with Step Names */}
           <div className="mb-8">
-            <div className="flex justify-between items-center mb-2">
-              {[1, 2, 3, 4, 5].map(step => <div key={step} className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step === currentStep ? "bg-primary text-primary-foreground shadow-glow" : step < currentStep ? "bg-primary/80 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  {step}
-                </div>)}
+            <div className="flex justify-between items-start mb-4">
+              {[1, 2, 3, 4, 5].map(step => (
+                <div key={step} className="flex flex-col items-center gap-2 flex-1">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step === currentStep ? "bg-primary text-primary-foreground shadow-glow" : step < currentStep ? "bg-primary/80 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {step}
+                  </div>
+                  <span className={`text-xs text-center font-medium hidden sm:block ${step === currentStep ? "text-primary" : step < currentStep ? "text-foreground" : "text-muted-foreground"}`}>
+                    {stepNames[step - 1]}
+                  </span>
+                </div>
+              ))}
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500" style={{
