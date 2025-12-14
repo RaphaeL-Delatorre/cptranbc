@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock } from "lucide-react";
+import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock, LogIn } from "lucide-react";
 import { useCreateAIT } from "@/hooks/useAITs";
 import { useAuth } from "@/hooks/useAuth";
 import { patentes, artigos, providencias, viaturas, prefixosPorViatura } from "@/lib/constants";
@@ -46,6 +47,7 @@ const initialFormData = {
   providenciasTomadas: [] as string[]
 };
 const AIT = () => {
+  const navigate = useNavigate();
   const {
     toast
   } = useToast();
@@ -54,10 +56,39 @@ const AIT = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
+    user,
     loading: authLoading
   } = useAuth();
   const createAIT = useCreateAIT();
   const totalSteps = 5;
+
+  // If not logged in, show login prompt
+  if (!authLoading && !user) {
+    return (
+      <MainLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-8 bg-card rounded-2xl shadow-card border border-border/50">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <LogIn className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="font-display text-2xl font-bold mb-3">Login Necessário</h2>
+            <p className="text-muted-foreground mb-6">
+              Para criar um Auto de Infração de Trânsito (AIT), é necessário estar conectado em uma conta.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button onClick={() => navigate("/auth")} className="w-full">
+                <LogIn className="h-4 w-4 mr-2" />
+                Fazer Login
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/")} className="w-full">
+                Voltar ao Início
+              </Button>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
   
   // Get available prefixos based on selected viatura
   const availablePrefixos = formData.viatura ? prefixosPorViatura[formData.viatura] || [] : [];
