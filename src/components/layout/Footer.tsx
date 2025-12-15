@@ -1,16 +1,10 @@
 import logoTransito from "@/assets/logo-transito.png";
-
 export const Footer = () => {
-  return (
-    <footer className="bg-secondary text-secondary-foreground py-8">
+  return <footer className="bg-secondary text-secondary-foreground py-8">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img 
-              src={logoTransito} 
-              alt="Logo Trânsito" 
-              className="h-12 w-12 object-contain"
-            />
+            <img alt="Logo Trânsito" className="h-12 w-12 object-contain" src="/lovable-uploads/286964c0-e2f0-4543-be3c-e51709ae3a4c.png" />
             <div>
               <h3 className="font-display text-lg font-bold">DEPT. TRÂNSITO</h3>
               <p className="text-sm text-secondary-foreground/70">Fiscalização e Controle</p>
@@ -27,6 +21,5 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
