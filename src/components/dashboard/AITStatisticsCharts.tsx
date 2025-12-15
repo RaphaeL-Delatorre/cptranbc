@@ -1,21 +1,18 @@
 import { useState, useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAITs } from "@/hooks/useAITs";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO, isWithinInterval, subWeeks, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BarChart3, TrendingUp, Car, FileText, Scale, UserCheck, AlertTriangle, Shield } from "lucide-react";
-
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--secondary))', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+import { BarChart3, TrendingUp, Car, FileText, Scale, UserCheck, AlertTriangle, Shield, Users } from "lucide-react";
 
 type FilterType = "semana" | "mes" | "total";
 
 export const AITStatisticsCharts = () => {
   const { data: aits = [] } = useAITs();
   const [filterType, setFilterType] = useState<FilterType>("total");
-  const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current, 1 = last week, etc
-  const [selectedMonth, setSelectedMonth] = useState(0); // 0 = current, 1 = last month, etc
+  const [selectedWeek, setSelectedWeek] = useState(0);
+  const [selectedMonth, setSelectedMonth] = useState(0);
 
   // Generate week options (last 12 weeks)
   const weekOptions = useMemo(() => {
@@ -79,7 +76,7 @@ export const AITStatisticsCharts = () => {
       });
     });
 
-    // Count artigos
+    // Count artigos - ALL of them
     const artigoCounts: Record<string, number> = {};
     approvedAITs.forEach(ait => {
       ait.artigos_infringidos?.forEach(art => {
@@ -87,13 +84,12 @@ export const AITStatisticsCharts = () => {
       });
     });
 
-    // Get top 5 artigos
-    const topArtigos = Object.entries(artigoCounts)
+    // Get ALL artigos sorted
+    const allArtigos = Object.entries(artigoCounts)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
       .map(([name, value]) => ({ name, value }));
 
-    // Count viaturas
+    // Count viaturas - ALL of them
     const viaturaCounts: Record<string, number> = {};
     approvedAITs.forEach(ait => {
       if (ait.viatura) {
@@ -101,13 +97,12 @@ export const AITStatisticsCharts = () => {
       }
     });
 
-    // Get top 5 viaturas
-    const topViaturas = Object.entries(viaturaCounts)
+    // Get ALL viaturas sorted
+    const allViaturas = Object.entries(viaturaCounts)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([name, value]) => ({ name: name.split(' - ')[1] || name, value }));
+      .map(([name, value]) => ({ name: name.split(' - ')[1] || name, fullName: name, value }));
 
-    // Count AITs by police officer
+    // Count AITs by police officer - ALL of them
     const policiaCounts: Record<string, number> = {};
     approvedAITs.forEach(ait => {
       if (ait.nome_agente) {
@@ -115,22 +110,21 @@ export const AITStatisticsCharts = () => {
       }
     });
 
-    // Get top 5 police officers
-    const topPoliciais = Object.entries(policiaCounts)
+    // Get ALL police officers sorted
+    const allPoliciais = Object.entries(policiaCounts)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
       .map(([name, value]) => ({ name, value }));
 
     return {
       totalAITs: approvedAITs.length,
-      multas: providenciaCounts["Multa"] || 0,
+      multas: providenciaCounts["Multa"] || providenciaCounts["Lavragem de Multa"] || 0,
       apreensoes: providenciaCounts["Apreensão do Veículo"] || 0,
-      revogacoes: providenciaCounts["Revogação de CNH"] || 0,
-      prisoes: providenciaCounts["Prisão em Flagrante"] || 0,
-      topArtigos,
-      topViaturas,
-      topPoliciais,
-      artigoMaisInfringido: topArtigos[0]?.name || "N/A"
+      revogacoes: providenciaCounts["Revogação de CNH"] || providenciaCounts["Revogação da CNH"] || 0,
+      prisoes: providenciaCounts["Prisão em Flagrante"] || providenciaCounts["Prisão do Condutor"] || 0,
+      allArtigos,
+      allViaturas,
+      allPoliciais,
+      artigoMaisInfringido: allArtigos[0]?.name || "N/A"
     };
   }, [filteredAITs]);
 
@@ -239,40 +233,40 @@ export const AITStatisticsCharts = () => {
         </CardContent>
       </Card>
 
-      {/* Charts Grid */}
+      {/* Lists Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Artigos Chart */}
+        {/* All Artigos List */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Top 5 Artigos Infringidos
+              Todos os Artigos Infringidos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.topArtigos.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={stats.topArtigos} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis dataKey="name" type="category" width={60} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            {stats.allArtigos.length > 0 ? (
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {stats.allArtigos.map((item, index) => (
+                  <div key={item.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                        {index + 1}
+                      </span>
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-full font-bold">
+                      {item.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Top Viaturas Chart */}
+        {/* All Viaturas List */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -281,64 +275,55 @@ export const AITStatisticsCharts = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.topViaturas.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={stats.topViaturas}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    labelLine={false}
-                  >
-                    {stats.topViaturas.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            {stats.allViaturas.length > 0 ? (
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {stats.allViaturas.map((item, index) => (
+                  <div key={item.fullName} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-sm font-bold text-secondary">
+                        {index + 1}
+                      </span>
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full font-bold">
+                      {item.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
             )}
           </CardContent>
         </Card>
 
-        {/* AITs por Policial */}
+        {/* All AITs por Policial */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-primary" />
-              AITs por Policial (Top 5)
+              <Users className="h-5 w-5 text-primary" />
+              AITs por Policial
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.topPoliciais.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={stats.topPoliciais}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            {stats.allPoliciais.length > 0 ? (
+              <div className="max-h-[400px] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {stats.allPoliciais.map((item, index) => (
+                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent-foreground shrink-0">
+                          {index + 1}
+                        </span>
+                        <span className="font-medium truncate">{item.name}</span>
+                      </div>
+                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-full font-bold shrink-0 ml-2">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
             )}

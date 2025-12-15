@@ -21,13 +21,22 @@ export const HeroSection = () => {
         <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
       </div>
 
+      {/* Watermark Logo */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
+        <img 
+          src={logoTransito}
+          alt=""
+          className="w-[500px] h-[500px] object-contain"
+        />
+      </div>
+
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 text-center">
         {/* Logo */}
         <div className="mb-8 animate-fade-in">
           <img 
             src={logoTransito}
-            alt="Escudo Trânsito"
+            alt="Escudo CPTran"
             className="mx-auto h-32 w-32 md:h-40 md:w-40 object-contain drop-shadow-2xl animate-float"
           />
         </div>
@@ -35,18 +44,17 @@ export const HeroSection = () => {
         {/* Title */}
         <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
           <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold mb-4">
-            <span className="text-primary">DEPT.</span>{" "}
-            <span className="text-secondary-foreground">TRÂNSITO</span>
+            <span className="text-primary">CPTran</span>
           </h1>
         </div>
 
         {/* Subtitle */}
         <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
           <h2 className="font-display text-xl md:text-2xl text-primary/90 mb-4">
-            DEPARTAMENTO DE TRÂNSITO
+            Comando de Policiamento de Trânsito (CPTran)
           </h2>
           <p className="text-secondary-foreground/80 text-lg md:text-xl max-w-2xl mx-auto mb-2">
-            Departamento de Fiscalização e Controle de Trânsito
+            Fiscalização e Controle de Trânsito
           </p>
           <p className="text-primary font-semibold text-lg italic">
             Segurança e Ordem
