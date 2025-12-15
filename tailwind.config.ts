@@ -15,24 +15,21 @@ export default {
   	extend: {
   		fontFamily: {
   			sans: [
-  				'Source Sans Pro',
+  				'Space Grotesk',
   				'ui-sans-serif',
   				'system-ui',
-  				'-apple-system',
-  				'BlinkMacSystemFont',
-  				'Segoe UI',
-  				'Roboto',
-  				'Helvetica Neue',
-  				'Arial',
-  				'Noto Sans',
-  				'sans-serif'
+  				'sans-serif',
+  				'Apple Color Emoji',
+  				'Segoe UI Emoji',
+  				'Segoe UI Symbol',
+  				'Noto Color Emoji'
   			],
   			display: [
   				'Oswald',
   				'sans-serif'
   			],
   			serif: [
-  				'Source Serif Pro',
+  				'Lora',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
@@ -41,7 +38,7 @@ export default {
   				'serif'
   			],
   			mono: [
-  				'Source Code Pro',
+  				'Space Mono',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',
@@ -136,7 +133,7 @@ export default {
   					height: '0'
   				}
   			},
-  			'counter': {
+  			counter: {
   				from: {
   					'--num': '0'
   				},
