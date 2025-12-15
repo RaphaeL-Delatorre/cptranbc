@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, Users, FileText, Car, Info, LogOut } from "lucide-react";
+import { Menu, X, Home, Users, FileText, Car, Info, LogOut, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoTransito from "@/assets/logo-transito.png";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useUserRoles } from "@/hooks/useRoles";
 
 const navItems = [
   { name: "Início", path: "/", icon: Home },
@@ -15,11 +18,48 @@ const navItems = [
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [newAITCount, setNewAITCount] = useState(0);
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  const { data: userRoles = [] } = useUserRoles(user?.id);
+
+  const isAdminOrModerador = userRoles.some(r => r.role === "admin" || r.role === "moderador");
+
+  // Real-time notifications for new AITs
+  useEffect(() => {
+    if (!isAdminOrModerador) return;
+
+    const channel = supabase
+      .channel('new-aits')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'aits'
+        },
+        (payload) => {
+          setNewAITCount(prev => prev + 1);
+          toast({
+            title: "Novo AIT Registrado",
+            description: `AIT #${payload.new.numero_ait} aguardando aprovação`,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdminOrModerador, toast]);
 
   const handleLogout = async () => {
     await signOut();
+  };
+
+  const clearNotifications = () => {
+    setNewAITCount(0);
   };
 
   return (
@@ -30,14 +70,14 @@ export const Header = () => {
           <Link to="/" className="flex items-center gap-3 group">
             <img 
               src={logoTransito} 
-              alt="Logo Trânsito" 
+              alt="Logo CPTran" 
               className="h-10 w-10 object-contain transition-transform duration-300 group-hover:scale-110"
             />
             <div className="hidden sm:block">
               <h1 className="font-display text-lg font-bold text-foreground">
-                DEPT. TRÂNSITO
+                CPTran
               </h1>
-              <p className="text-xs text-muted-foreground">Fiscalização e Controle</p>
+              <p className="text-xs text-muted-foreground">Policiamento de Trânsito</p>
             </div>
           </Link>
 
@@ -63,8 +103,22 @@ export const Header = () => {
             })}
           </nav>
 
-          {/* Admin Button, Logout & Mobile Menu */}
+          {/* Admin Button, Notifications, Logout & Mobile Menu */}
           <div className="flex items-center gap-2">
+            {/* Notification Bell for Admin/Moderador */}
+            {isAdminOrModerador && (
+              <Link to="/dashboard" onClick={clearNotifications}>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {newAITCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
+                      {newAITCount > 9 ? '9+' : newAITCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+            )}
+
             <Link to="/admin">
               <Button variant="hero" size="sm" className="hidden sm:flex">
                 ADMINISTRATIVO

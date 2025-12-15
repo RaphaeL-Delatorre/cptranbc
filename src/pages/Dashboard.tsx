@@ -25,6 +25,7 @@ import {
   Loader2,
   Home,
   Camera,
+  Download,
 } from "lucide-react";
 import logoTransito from "@/assets/logo-transito.png";
 import { useAITs, useAITStats, useUpdateAITStatus, useDeleteAllAITs, type AIT } from "@/hooks/useAITs";
@@ -35,6 +36,8 @@ import { useUserRoles } from "@/hooks/useRoles";
 import { useUsers, useCreateUserWithRole, useAssignRole, useRemoveRole, useDeleteUser, useUpdateUserPassword, useUpdateUser, type UserWithRole } from "@/hooks/useUsers";
 import { SettingsContent } from "@/components/dashboard/SettingsContent";
 import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts";
+import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
+import { supabase } from "@/integrations/supabase/client";
 
 type TabType = "dashboard" | "hierarquia" | "ait" | "usuarios" | "config";
 
@@ -570,6 +573,15 @@ const Dashboard = () => {
                     Deletar AITs
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportAllAITsToPDF(filteredAITs)}
+                  className="gap-2"
+                  disabled={filteredAITs.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar PDF
+                </Button>
               </div>
             </div>
 
@@ -586,6 +598,14 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       {getStatusBadge(selectedAIT.status)}
+                      <Button 
+                        size="icon" 
+                        variant="outline" 
+                        onClick={() => exportAITToPDF(selectedAIT)}
+                        title="Exportar PDF"
+                      >
+                        <Download className="h-5 w-5" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(null)}>
                         <X className="h-5 w-5" />
                       </Button>
@@ -769,24 +789,32 @@ const Dashboard = () => {
                       </h4>
                       {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                          {selectedAIT.imagens.map((img, idx) => (
-                            <a 
-                              key={idx} 
-                              href={img} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="aspect-square rounded-lg overflow-hidden border border-border/50 hover:border-primary transition-colors"
-                            >
-                              <img 
-                                src={img} 
-                                alt={`Imagem ${idx + 1}`} 
-                                className="w-full h-full object-cover hover:scale-105 transition-transform"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                }}
-                              />
-                            </a>
-                          ))}
+                          {selectedAIT.imagens.map((imgPath, idx) => {
+                            // Get the public URL for the image
+                            const imageUrl = imgPath.startsWith('http') 
+                              ? imgPath 
+                              : supabase.storage.from('ait-images').getPublicUrl(imgPath).data.publicUrl;
+                            
+                            return (
+                              <a 
+                                key={idx} 
+                                href={imageUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="aspect-square rounded-lg overflow-hidden border border-border/50 hover:border-primary transition-colors"
+                              >
+                                <img 
+                                  src={imageUrl} 
+                                  alt={`Imagem ${idx + 1}`} 
+                                  className="w-full h-full object-cover hover:scale-105 transition-transform"
+                                  onError={(e) => {
+                                    console.log('Image load error for:', imgPath);
+                                    (e.target as HTMLImageElement).src = '/placeholder.svg';
+                                  }}
+                                />
+                              </a>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-muted-foreground">Nenhuma imagem anexada</p>
