@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAITs } from "@/hooks/useAITs";
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO, isWithinInterval, subWeeks, subMonths, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO, isWithinInterval, subWeeks, subMonths, isAfter, isBefore, startOfDay, endOfDay, subDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BarChart3, TrendingUp, Car, FileText, Scale, UserCheck, AlertTriangle, Shield, Users, Download, Calendar } from "lucide-react";
+import { BarChart3, TrendingUp, Car, FileText, Scale, UserCheck, AlertTriangle, Shield, Users, Download, Calendar, LineChart } from "lucide-react";
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -96,6 +97,69 @@ export const AITStatisticsCharts = () => {
       return isWithinInterval(aitDate, { start, end });
     });
   }, [aits, filterType, selectedWeek, selectedMonth, startDate, endDate]);
+
+  // Generate trend data for charts
+  const trendData = useMemo(() => {
+    const now = new Date();
+    const thirtyDaysAgo = subDays(now, 30);
+    
+    // Daily trend for last 30 days
+    const days = eachDayOfInterval({ start: thirtyDaysAgo, end: now });
+    const dailyData = days.map(day => {
+      const dayAITs = aits.filter(ait => {
+        const aitDate = parseISO(ait.created_at);
+        return format(aitDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
+      });
+      
+      return {
+        date: format(day, 'dd/MM', { locale: ptBR }),
+        total: dayAITs.length,
+        aprovados: dayAITs.filter(a => a.status === 'aprovado').length,
+        pendentes: dayAITs.filter(a => a.status === 'pendente').length,
+        recusados: dayAITs.filter(a => a.status === 'recusado').length,
+      };
+    });
+
+    // Weekly trend for last 12 weeks
+    const twelveWeeksAgo = subWeeks(now, 12);
+    const weeks = eachWeekOfInterval({ start: twelveWeeksAgo, end: now }, { locale: ptBR });
+    const weeklyData = weeks.map(weekStart => {
+      const weekEnd = endOfWeek(weekStart, { locale: ptBR });
+      const weekAITs = aits.filter(ait => {
+        const aitDate = parseISO(ait.created_at);
+        return isWithinInterval(aitDate, { start: weekStart, end: weekEnd });
+      });
+      
+      return {
+        date: format(weekStart, 'dd/MM', { locale: ptBR }),
+        total: weekAITs.length,
+        aprovados: weekAITs.filter(a => a.status === 'aprovado').length,
+        pendentes: weekAITs.filter(a => a.status === 'pendente').length,
+        recusados: weekAITs.filter(a => a.status === 'recusado').length,
+      };
+    });
+
+    // Monthly trend for last 12 months
+    const twelveMonthsAgo = subMonths(now, 12);
+    const months = eachMonthOfInterval({ start: twelveMonthsAgo, end: now });
+    const monthlyData = months.map(monthStart => {
+      const monthEnd = endOfMonth(monthStart);
+      const monthAITs = aits.filter(ait => {
+        const aitDate = parseISO(ait.created_at);
+        return isWithinInterval(aitDate, { start: monthStart, end: monthEnd });
+      });
+      
+      return {
+        date: format(monthStart, 'MMM/yy', { locale: ptBR }),
+        total: monthAITs.length,
+        aprovados: monthAITs.filter(a => a.status === 'aprovado').length,
+        pendentes: monthAITs.filter(a => a.status === 'pendente').length,
+        recusados: monthAITs.filter(a => a.status === 'recusado').length,
+      };
+    });
+
+    return { dailyData, weeklyData, monthlyData };
+  }, [aits]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -262,12 +326,12 @@ export const AITStatisticsCharts = () => {
     }
 
     // Check if we need a new page
-    if (yPos > 200) {
+    if (yPos > 180) {
       doc.addPage();
       yPos = 20;
     }
 
-    // Policiais Table
+    // AITs por Policial Table
     if (stats.allPoliciais.length > 0) {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
@@ -457,6 +521,100 @@ export const AITStatisticsCharts = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Trend Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Trend Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <LineChart className="h-5 w-5 text-primary" />
+              Tendência Mensal (12 meses)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsLineChart data={trendData.monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tickLine={{ stroke: 'hsl(var(--border))' }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tickLine={{ stroke: 'hsl(var(--border))' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="total" 
+                    name="Total"
+                    stroke="hsl(43, 96%, 56%)" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(43, 96%, 56%)' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="aprovados" 
+                    name="Aprovados"
+                    stroke="hsl(142, 76%, 36%)" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(142, 76%, 36%)' }}
+                  />
+                </RechartsLineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Trend Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Tendência Semanal (12 semanas)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData.weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tickLine={{ stroke: 'hsl(var(--border))' }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tickLine={{ stroke: 'hsl(var(--border))' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="pendentes" name="Pendentes" fill="hsl(43, 96%, 56%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="recusados" name="Recusados" fill="hsl(0, 72%, 50%)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Lists Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

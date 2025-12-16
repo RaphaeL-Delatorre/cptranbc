@@ -56,6 +56,7 @@ const Dashboard = () => {
   const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
   const [editingHierarquia, setEditingHierarquia] = useState<HierarquiaMembro | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "aprovado" | "recusado">("todos");
 
   // Determine user role
   const userRole = userRoles.find(r => r.role === "admin") ? "admin" : 
@@ -220,6 +221,10 @@ const Dashboard = () => {
   };
 
   const filteredAITs = aits.filter((ait) => {
+    // Status filter
+    if (statusFilter !== "todos" && ait.status !== statusFilter) return false;
+    
+    // Search filter
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -542,16 +547,27 @@ const Dashboard = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <h2 className="font-display text-2xl font-bold">Gerenciar AITs</h2>
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center flex-wrap">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder="Buscar AIT..." 
-                    className="pl-9 w-64" 
+                    className="pl-9 w-48" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+                <Select value={statusFilter} onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="pendente">Pendentes</SelectItem>
+                    <SelectItem value="aprovado">Aprovados</SelectItem>
+                    <SelectItem value="recusado">Recusados</SelectItem>
+                  </SelectContent>
+                </Select>
                 {userRole === "admin" && (
                   <Button
                     variant="destructive"
