@@ -128,28 +128,36 @@ export const useAuth = () => {
         return { error };
       }
 
-      // Update profile with RG
+      // Wait for profile to be created by trigger, then update RG and assign cargo
       if (data.user) {
-        await supabase
-          .from("profiles")
-          .update({ rg })
-          .eq("user_id", data.user.id);
+        // Use setTimeout to defer Supabase calls (avoid auth deadlock)
+        setTimeout(async () => {
+          try {
+            // Update profile with RG
+            await supabase
+              .from("profiles")
+              .update({ rg, nome })
+              .eq("user_id", data.user!.id);
 
-        // Assign default cargo (Membro)
-        const { data: membroCargo } = await supabase
-          .from("cargos")
-          .select("id")
-          .eq("nome", "Membro")
-          .single();
+            // Assign default cargo (Membro)
+            const { data: membroCargo } = await supabase
+              .from("cargos")
+              .select("id")
+              .eq("nome", "Membro")
+              .maybeSingle();
 
-        if (membroCargo) {
-          await supabase
-            .from("usuario_cargos")
-            .insert({
-              user_id: data.user.id,
-              cargo_id: membroCargo.id,
-            });
-        }
+            if (membroCargo) {
+              await supabase
+                .from("usuario_cargos")
+                .upsert({
+                  user_id: data.user!.id,
+                  cargo_id: membroCargo.id,
+                }, { onConflict: 'user_id,cargo_id' });
+            }
+          } catch (err) {
+            console.error("Error updating profile after signup:", err);
+          }
+        }, 500);
       }
 
       toast({
