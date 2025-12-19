@@ -40,8 +40,8 @@ export const Header = () => {
           <Link to="/" className="flex items-center gap-3 group">
             <img
               alt="Logo CPTran"
-              className="h-10 w-10 object-contain transition-all duration-300 group-hover:scale-110 animate-glow"
-              src="/lovable-uploads/9a715676-f9f4-44ed-a7bf-b35796584151.png"
+              className="h-10 w-10 object-contain transition-all duration-300 group-hover:scale-110"
+              src="/favicon.png"
             />
             <div className="hidden sm:block">
               <h1 className="font-display text-lg font-bold text-primary neon-text">
