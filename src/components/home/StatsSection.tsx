@@ -61,34 +61,39 @@ const StatCard = ({ icon: Icon, value, label, prefix = "", suffix = "", delay = 
   return (
     <div
       ref={ref}
-      className="group relative bg-card rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+      className="group relative bg-card rounded-2xl p-6 shadow-neon hover:shadow-glow transition-all duration-500 hover:-translate-y-2 overflow-hidden border border-primary/20 hover:border-primary/50"
     >
-      {/* Background Glow */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
+      {/* Animated border glow */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+        <div className="absolute inset-[-1px] rounded-2xl bg-gradient-to-r from-primary/50 via-accent/50 to-primary/50 blur-sm" />
+      </div>
+
       {/* Icon */}
       <div className="relative mb-4">
-        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
+        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all duration-300 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.3)]">
           <Icon className="h-7 w-7 text-primary" />
         </div>
       </div>
 
       {/* Value */}
       <div className="relative">
-        <p className="font-display text-3xl md:text-4xl font-bold text-foreground mb-1">
+        <p className="font-display text-3xl md:text-4xl font-black text-foreground mb-1">
           {prefix}{count.toLocaleString('pt-BR')}{suffix}
         </p>
-        <p className="text-sm text-muted-foreground font-medium">{label}</p>
+        <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
       </div>
 
-      {/* Decorative Line */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+      {/* Bottom accent line */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
     </div>
   );
 };
 
 export const StatsSection = () => {
-  const { data: stats, isLoading } = useAITStats();
+  const { data: stats } = useAITStats();
 
   const statsData = [
     { 
@@ -106,17 +111,29 @@ export const StatsSection = () => {
   ];
 
   return (
-    <section className="py-20 bg-muted/50">
-      <div className="container mx-auto px-4">
+    <section className="py-20 bg-muted/30 relative overflow-hidden">
+      {/* Background pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, hsl(var(--primary)) 1px, transparent 0)`,
+            backgroundSize: "40px 40px",
+          }}
+        />
+      </div>
+
+      <div className="container mx-auto px-4 relative">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-            DEPT. TRÂNSITO{" "}
-            <span className="text-primary">EM NÚMEROS</span>
+          <h2 className="font-display text-3xl md:text-4xl font-black text-foreground mb-4">
+            CPTran{" "}
+            <span className="text-primary neon-text">EM NÚMEROS</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Estatísticas de Fiscalização e Controle
           </p>
+          <div className="mt-4 h-1 w-24 mx-auto bg-gradient-to-r from-transparent via-primary to-transparent" />
         </div>
 
         {/* Stats Grid */}
