@@ -194,3 +194,45 @@ export const useCheckPermissions = (userId?: string) => {
     hasAllPermissions,
   };
 };
+// ===== Mutations adicionadas para corrigir erro de build =====
+export async function createCargo(data: any) {
+  const res = await fetch("/api/cargos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function updateCargo(id: string, data: any) {
+  const res = await fetch(`/api/cargos/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteCargo(id: string) {
+  const res = await fetch(`/api/cargos/${id}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
+export async function addCargoPermissao(cargoId: string, permissaoId: string) {
+  const res = await fetch(`/api/cargos/${cargoId}/permissoes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ permissaoId }),
+  });
+  return res.json();
+}
+
+export async function removeCargoPermissao(cargoId: string, permissaoId: string) {
+  const res = await fetch(
+    `/api/cargos/${cargoId}/permissoes/${permissaoId}`,
+    { method: "DELETE" }
+  );
+  return res.json();
+}
