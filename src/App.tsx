@@ -12,7 +12,6 @@ import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import Setup from "./pages/Setup";
 import PoliceProfile from "./pages/PoliceProfile";
-import PontoEletronico from "./pages/PontoEletronico";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,7 +32,6 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="/policial/:name" element={<PoliceProfile />} />
-          <Route path="/ponto" element={<PontoEletronico />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

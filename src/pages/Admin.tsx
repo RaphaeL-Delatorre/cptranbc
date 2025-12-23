@@ -3,22 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, Eye, EyeOff, User, Loader2, IdCard } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, User, Loader2 } from "lucide-react";
+import logoTransito from "@/assets/logo-transito.png";
 import { useAuth } from "@/hooks/useAuth";
-import { useCheckPermissions } from "@/hooks/usePermissions";
+import { useUserRoles } from "@/hooks/useRoles";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
 const loginSchema = z.object({
-  nome: z.string().trim().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
+  email: z.string().trim().email({ message: "E-mail inválido" }),
   password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
 });
 
-const signupSchema = z.object({
-  rg: z.string().trim().min(1, { message: "RG é obrigatório" }),
+const signupSchema = loginSchema.extend({
   nome: z.string().trim().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
-  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem",
@@ -29,38 +27,38 @@ const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading, signIn, signUp } = useAuth();
-  const { hasPermission, isLoading: permissionsLoading } = useCheckPermissions(user?.id);
+  const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(user?.id);
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [credentials, setCredentials] = useState({
-    rg: "",
-    nome: "",
+    email: "",
     password: "",
     confirmPassword: "",
+    nome: "",
   });
 
-  // Load saved credentials
-  useEffect(() => {
-    const savedNome = localStorage.getItem("cptran_saved_nome");
-    if (savedNome) {
-      setCredentials(prev => ({ ...prev, nome: savedNome }));
-      setRememberMe(true);
-    }
-  }, []);
+  // Determine user role
+  const userRole = userRoles.find(r => r.role === "admin") ? "admin" : 
+                   userRoles.find(r => r.role === "moderador") ? "moderador" : null;
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated based on role
   useEffect(() => {
-    if (!authLoading && !permissionsLoading && user) {
-      if (hasPermission("acessar_dashboard")) {
+    if (!authLoading && !rolesLoading && user) {
+      if (userRole) {
         navigate("/dashboard");
       } else {
+        // User is logged in but has no admin/moderador role
+        toast({
+          title: "Acesso restrito",
+          description: "Você não tem permissão para acessar o painel administrativo.",
+          variant: "destructive",
+        });
         navigate("/");
       }
     }
-  }, [user, authLoading, permissionsLoading, hasPermission, navigate]);
+  }, [user, authLoading, rolesLoading, userRole, navigate, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,16 +76,10 @@ const Admin = () => {
       return;
     }
 
-    // Save credentials if remember me is checked
-    if (rememberMe) {
-      localStorage.setItem("cptran_saved_nome", credentials.nome);
-    } else {
-      localStorage.removeItem("cptran_saved_nome");
-    }
-
     setLoading(true);
-    await signIn(credentials.nome, credentials.password);
+    const { error } = await signIn(credentials.email, credentials.password);
     setLoading(false);
+    // Redirect will be handled by the useEffect above
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -107,104 +99,93 @@ const Admin = () => {
     }
 
     setLoading(true);
-    const { error } = await signUp(credentials.rg, credentials.nome, credentials.password);
+    const { error } = await signUp(credentials.email, credentials.password, credentials.nome);
     setLoading(false);
 
     if (!error) {
       setIsSignUp(false);
-      setCredentials({ rg: "", nome: credentials.nome, password: "", confirmPassword: "" });
+      setCredentials({ email: credentials.email, password: "", confirmPassword: "", nome: "" });
     }
   };
 
-  if (authLoading || (user && permissionsLoading)) {
+  if (authLoading || (user && rolesLoading)) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="min-h-screen hero-gradient flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      </div>
-
-      <div className="w-full max-w-md relative z-10">
+    <div className="min-h-screen hero-gradient flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 relative">
-            <img
-              src="/lovable-uploads/9a715676-f9f4-44ed-a7bf-b35796584151.png"
-              alt="Logo CPTran"
-              className="w-full h-full object-contain animate-glow"
-            />
-          </div>
-          <h1 className="font-display text-4xl font-bold">
-            <span className="text-primary neon-text">CPTran</span>
+          <img
+            src={logoTransito}
+            alt="Logo Trânsito"
+            className="mx-auto h-20 w-20 object-contain mb-4"
+          />
+          <h1 className="font-display text-3xl font-bold text-secondary-foreground">
+            <span className="text-primary">ADMINISTRATIVO</span>
           </h1>
-          <p className="text-muted-foreground text-sm mt-2">
-            {isSignUp ? "Criar nova conta no sistema" : "Faça login para acessar"}
+          <p className="text-secondary-foreground/70 text-sm mt-2">
+            {isSignUp ? "Criar nova conta no sistema" : "Faça login para acessar o sistema"}
           </p>
         </div>
 
         {/* Login/SignUp Card */}
-        <div className="bg-card rounded-xl p-8 shadow-neon border border-primary/20 animate-pulse-neon">
-          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-5">
+        <div className="bg-card rounded-2xl p-8 shadow-lg border border-border/50">
+          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="rg" className="text-foreground">Registro Geral (RG)</Label>
+                <Label htmlFor="nome">Nome Completo</Label>
                 <div className="relative">
-                  <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    id="rg"
+                    id="nome"
                     type="text"
-                    placeholder="Seu RG"
-                    className="pl-10 bg-background border-border/50 focus:border-primary"
-                    value={credentials.rg}
-                    onChange={(e) => setCredentials({ ...credentials, rg: e.target.value })}
+                    placeholder="Seu nome completo"
+                    className="pl-10"
+                    value={credentials.nome}
+                    onChange={(e) => setCredentials({ ...credentials, nome: e.target.value })}
                   />
                 </div>
-                {errors.rg && <p className="text-xs text-destructive">{errors.rg}</p>}
+                {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="nome" className="text-foreground">Nome</Label>
+              <Label htmlFor="email">E-mail</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  id="nome"
-                  type="text"
-                  placeholder="Seu nome completo"
-                  className="pl-10 bg-background border-border/50 focus:border-primary"
-                  value={credentials.nome}
-                  onChange={(e) => setCredentials({ ...credentials, nome: e.target.value })}
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  className="pl-10"
+                  value={credentials.email}
+                  onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                 />
               </div>
-              {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground">Senha</Label>
+              <Label htmlFor="password">Senha</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="pl-10 pr-10 bg-background border-border/50 focus:border-primary"
+                  className="pl-10 pr-10"
                   value={credentials.password}
                   onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -215,14 +196,14 @@ const Admin = () => {
 
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-foreground">Confirmar Senha</Label>
+                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="confirmPassword"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-10 bg-background border-border/50 focus:border-primary"
+                    className="pl-10"
                     value={credentials.confirmPassword}
                     onChange={(e) => setCredentials({ ...credentials, confirmPassword: e.target.value })}
                   />
@@ -231,59 +212,37 @@ const Admin = () => {
               </div>
             )}
 
-            {!isSignUp && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm text-muted-foreground cursor-pointer"
-                >
-                  Lembrar meu nome
-                </label>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon font-semibold"
-              disabled={loading}
-            >
+            <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isSignUp ? "Criar Conta" : "Entrar"}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
             <button
               type="button"
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setErrors({});
               }}
-              className="text-sm text-primary hover:text-primary/80 transition-colors"
+              className="text-sm text-primary hover:underline"
             >
               {isSignUp ? "Já tem uma conta? Faça login" : "Não tem conta? Cadastre-se"}
             </button>
           </div>
 
           <div className="mt-4 text-center">
-            <a href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a href="/" className="text-sm text-muted-foreground hover:underline">
               Voltar para o site
             </a>
           </div>
         </div>
 
         {/* Footer */}
-        <p className="text-center text-muted-foreground text-xs mt-6">
+        <p className="text-center text-secondary-foreground/50 text-xs mt-6">
           {isSignUp 
-            ? "Ao criar uma conta, você concorda com os termos de uso" 
-            : "Sistema de Gerenciamento CPTran"}
+            ? "Ao criar uma conta, você aceita os termos de uso" 
+            : "O painel administrativo é restrito a moderadores e administradores"}
         </p>
       </div>
     </div>

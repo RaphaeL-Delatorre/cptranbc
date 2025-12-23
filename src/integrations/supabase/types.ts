@@ -119,72 +119,6 @@ export type Database = {
         }
         Relationships: []
       }
-      cargo_permissoes: {
-        Row: {
-          cargo_id: string
-          created_at: string
-          id: string
-          permissao_id: string
-        }
-        Insert: {
-          cargo_id: string
-          created_at?: string
-          id?: string
-          permissao_id: string
-        }
-        Update: {
-          cargo_id?: string
-          created_at?: string
-          id?: string
-          permissao_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cargo_permissoes_cargo_id_fkey"
-            columns: ["cargo_id"]
-            isOneToOne: false
-            referencedRelation: "cargos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cargo_permissoes_permissao_id_fkey"
-            columns: ["permissao_id"]
-            isOneToOne: false
-            referencedRelation: "permissoes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cargos: {
-        Row: {
-          cor: string | null
-          created_at: string
-          descricao: string | null
-          id: string
-          nome: string
-          ordem: number | null
-          updated_at: string
-        }
-        Insert: {
-          cor?: string | null
-          created_at?: string
-          descricao?: string | null
-          id?: string
-          nome: string
-          ordem?: number | null
-          updated_at?: string
-        }
-        Update: {
-          cor?: string | null
-          created_at?: string
-          descricao?: string | null
-          id?: string
-          nome?: string
-          ordem?: number | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       gallery_images: {
         Row: {
           created_at: string
@@ -248,138 +182,12 @@ export type Database = {
         }
         Relationships: []
       }
-      noticias: {
-        Row: {
-          ativa: boolean | null
-          created_at: string
-          created_by: string | null
-          descricao: string | null
-          id: string
-          imagem_url: string | null
-          subtitulo: string | null
-          titulo: string
-          updated_at: string
-        }
-        Insert: {
-          ativa?: boolean | null
-          created_at?: string
-          created_by?: string | null
-          descricao?: string | null
-          id?: string
-          imagem_url?: string | null
-          subtitulo?: string | null
-          titulo: string
-          updated_at?: string
-        }
-        Update: {
-          ativa?: boolean | null
-          created_at?: string
-          created_by?: string | null
-          descricao?: string | null
-          id?: string
-          imagem_url?: string | null
-          subtitulo?: string | null
-          titulo?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      permissoes: {
-        Row: {
-          categoria: string
-          codigo: string
-          created_at: string
-          descricao: string | null
-          id: string
-          nome: string
-        }
-        Insert: {
-          categoria: string
-          codigo: string
-          created_at?: string
-          descricao?: string | null
-          id?: string
-          nome: string
-        }
-        Update: {
-          categoria?: string
-          codigo?: string
-          created_at?: string
-          descricao?: string | null
-          id?: string
-          nome?: string
-        }
-        Relationships: []
-      }
-      pontos_eletronicos: {
-        Row: {
-          aprovado_por: string | null
-          created_at: string
-          data_aprovacao: string | null
-          data_fim: string | null
-          data_inicio: string
-          funcao: Database["public"]["Enums"]["funcao_viatura"]
-          id: string
-          motivo_recusa: string | null
-          observacao: string | null
-          pausas: Json | null
-          status: Database["public"]["Enums"]["ponto_status"]
-          tempo_total_segundos: number | null
-          updated_at: string
-          user_id: string
-          viatura_id: string | null
-        }
-        Insert: {
-          aprovado_por?: string | null
-          created_at?: string
-          data_aprovacao?: string | null
-          data_fim?: string | null
-          data_inicio?: string
-          funcao: Database["public"]["Enums"]["funcao_viatura"]
-          id?: string
-          motivo_recusa?: string | null
-          observacao?: string | null
-          pausas?: Json | null
-          status?: Database["public"]["Enums"]["ponto_status"]
-          tempo_total_segundos?: number | null
-          updated_at?: string
-          user_id: string
-          viatura_id?: string | null
-        }
-        Update: {
-          aprovado_por?: string | null
-          created_at?: string
-          data_aprovacao?: string | null
-          data_fim?: string | null
-          data_inicio?: string
-          funcao?: Database["public"]["Enums"]["funcao_viatura"]
-          id?: string
-          motivo_recusa?: string | null
-          observacao?: string | null
-          pausas?: Json | null
-          status?: Database["public"]["Enums"]["ponto_status"]
-          tempo_total_segundos?: number | null
-          updated_at?: string
-          user_id?: string
-          viatura_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pontos_eletronicos_viatura_id_fkey"
-            columns: ["viatura_id"]
-            isOneToOne: false
-            referencedRelation: "viaturas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           created_at: string
           email: string
           id: string
           nome: string
-          rg: string | null
           updated_at: string
           user_id: string
         }
@@ -388,7 +196,6 @@ export type Database = {
           email: string
           id?: string
           nome: string
-          rg?: string | null
           updated_at?: string
           user_id: string
         }
@@ -397,7 +204,6 @@ export type Database = {
           email?: string
           id?: string
           nome?: string
-          rg?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -481,35 +287,6 @@ export type Database = {
         }
         Relationships: []
       }
-      usuario_cargos: {
-        Row: {
-          cargo_id: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          cargo_id: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          cargo_id?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "usuario_cargos_cargo_id_fkey"
-            columns: ["cargo_id"]
-            isOneToOne: false
-            referencedRelation: "cargos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       viaturas: {
         Row: {
           ativa: boolean | null
@@ -539,10 +316,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_permission: {
-        Args: { _permission_code: string; _user_id: string }
-        Returns: boolean
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -554,7 +327,6 @@ export type Database = {
     Enums: {
       ait_status: "pendente" | "aprovado" | "recusado"
       app_role: "admin" | "moderador"
-      funcao_viatura: "motorista" | "encarregado" | "patrulheiro" | "apoio"
       patente:
         | "Coronel"
         | "Tenente-Coronel"
@@ -570,13 +342,6 @@ export type Database = {
         | "Cabo"
         | "Soldado de 1° Classe"
         | "Soldado de 2° Classe"
-      ponto_status:
-        | "ativo"
-        | "pausado"
-        | "finalizado"
-        | "pendente"
-        | "aprovado"
-        | "recusado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -706,7 +471,6 @@ export const Constants = {
     Enums: {
       ait_status: ["pendente", "aprovado", "recusado"],
       app_role: ["admin", "moderador"],
-      funcao_viatura: ["motorista", "encarregado", "patrulheiro", "apoio"],
       patente: [
         "Coronel",
         "Tenente-Coronel",
@@ -722,14 +486,6 @@ export const Constants = {
         "Cabo",
         "Soldado de 1° Classe",
         "Soldado de 2° Classe",
-      ],
-      ponto_status: [
-        "ativo",
-        "pausado",
-        "finalizado",
-        "pendente",
-        "aprovado",
-        "recusado",
       ],
     },
   },

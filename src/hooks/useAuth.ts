@@ -29,47 +29,19 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sign in with nome (looks up email by nome first)
-  const signIn = async (nome: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      // First, find the user's email by nome
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("nome", nome.trim())
-        .limit(1);
-
-      if (profileError) {
-        toast({
-          title: "Erro no login",
-          description: "Erro ao buscar usuário.",
-          variant: "destructive",
-        });
-        return { error: profileError };
-      }
-
-      if (!profiles || profiles.length === 0) {
-        toast({
-          title: "Erro no login",
-          description: "Usuário não encontrado.",
-          variant: "destructive",
-        });
-        return { error: { message: "User not found" } };
-      }
-
-      const email = profiles[0].email;
-
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
       if (error) {
         let message = "Erro ao fazer login.";
         if (error.message.includes("Invalid login credentials")) {
-          message = "Nome ou senha incorretos.";
+          message = "E-mail ou senha incorretos.";
         } else if (error.message.includes("Email not confirmed")) {
-          message = "Conta não confirmada.";
+          message = "E-mail não confirmado. Verifique sua caixa de entrada.";
         }
         toast({
           title: "Erro no login",
@@ -94,21 +66,17 @@ export const useAuth = () => {
     }
   };
 
-  // Sign up with RG, nome, and password
-  const signUp = async (rg: string, nome: string, password: string) => {
+  const signUp = async (email: string, password: string, nome: string) => {
     try {
-      // Generate email from RG
-      const email = `${rg.replace(/\D/g, "")}@cptran.system`;
       const redirectUrl = `${window.location.origin}/`;
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           emailRedirectTo: redirectUrl,
           data: {
             nome,
-            rg,
           },
         },
       });
@@ -116,7 +84,7 @@ export const useAuth = () => {
       if (error) {
         let message = "Erro ao criar conta.";
         if (error.message.includes("already registered")) {
-          message = "Este RG já está registrado.";
+          message = "Este e-mail já está registrado.";
         } else if (error.message.includes("password")) {
           message = "A senha deve ter pelo menos 6 caracteres.";
         }
@@ -126,38 +94,6 @@ export const useAuth = () => {
           variant: "destructive",
         });
         return { error };
-      }
-
-      // Wait for profile to be created by trigger, then update RG and assign cargo
-      if (data.user) {
-        // Use setTimeout to defer Supabase calls (avoid auth deadlock)
-        setTimeout(async () => {
-          try {
-            // Update profile with RG
-            await supabase
-              .from("profiles")
-              .update({ rg, nome })
-              .eq("user_id", data.user!.id);
-
-            // Assign default cargo (Membro)
-            const { data: membroCargo } = await supabase
-              .from("cargos")
-              .select("id")
-              .eq("nome", "Membro")
-              .maybeSingle();
-
-            if (membroCargo) {
-              await supabase
-                .from("usuario_cargos")
-                .upsert({
-                  user_id: data.user!.id,
-                  cargo_id: membroCargo.id,
-                }, { onConflict: 'user_id,cargo_id' });
-            }
-          } catch (err) {
-            console.error("Error updating profile after signup:", err);
-          }
-        }, 500);
       }
 
       toast({
