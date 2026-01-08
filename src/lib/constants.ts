@@ -45,12 +45,13 @@ export const providencias = [
 ];
 
 export const prefixosViaturas = [
-  "T-01112 (Duster 1)",
-  "T-01118 (Duster 1)",
   "T-01000 - Comando Trânsito (Ranger)",
   "T-01113 (Ranger)",
   "T-01115 (Ranger)",
+  "T-01112 (Duster 1)",
+  "T-01118 (Duster 1)",
   "T-01231-11 (F850)",
-  "T-01112-11 e T-01113-11 (XT 660)",
+  "T-01112-11 (XT 660)",
+  "T-01113-11 (XT 660)",
   "CMM 13-1 (Guincho)",
 ] as const;
