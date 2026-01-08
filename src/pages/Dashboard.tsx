@@ -26,9 +26,11 @@ import {
   Home,
   Camera,
   Download,
+  User,
+  Printer,
 } from "lucide-react";
 import logoTransito from "@/assets/logo-transito.png";
-import { useAITs, useAITStats, useUpdateAITStatus, useDeleteAllAITs, type AIT } from "@/hooks/useAITs";
+import { useAITs, useAITStats, useUpdateAITStatus, useDeleteAllAITs, useDeleteAIT, type AIT } from "@/hooks/useAITs";
 import { useHierarquia, useCreateHierarquia, useUpdateHierarquia, useDeleteHierarquia, type HierarquiaMembro } from "@/hooks/useHierarquia";
 import { patentes } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,10 +38,11 @@ import { useUserRoles } from "@/hooks/useRoles";
 import { useUsers, useCreateUserWithRole, useAssignRole, useRemoveRole, useDeleteUser, useUpdateUserPassword, useUpdateUser, type UserWithRole } from "@/hooks/useUsers";
 import { SettingsContent } from "@/components/dashboard/SettingsContent";
 import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts";
+import { MyProfileContent } from "@/components/dashboard/MyProfileContent";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 
-type TabType = "dashboard" | "hierarquia" | "ait" | "usuarios" | "config";
+type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "usuarios" | "config";
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -69,6 +72,7 @@ const Dashboard = () => {
   const { data: users = [], isLoading: usersLoading } = useUsers();
   const updateAITStatus = useUpdateAITStatus();
   const deleteAllAITs = useDeleteAllAITs();
+  const deleteAIT = useDeleteAIT();
   const createHierarquia = useCreateHierarquia();
   const updateHierarquia = useUpdateHierarquia();
   const deleteHierarquia = useDeleteHierarquia();
@@ -332,6 +336,9 @@ const Dashboard = () => {
             <AITStatisticsCharts />
           </div>
         );
+
+      case "perfil":
+        return <MyProfileContent />;
 
       case "hierarquia":
         return (
@@ -901,6 +908,9 @@ const Dashboard = () => {
                               <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
+                                <Download className="h-4 w-4" />
+                              </Button>
                               {ait.status === "pendente" && (
                                 <>
                                   <Button 
@@ -920,6 +930,25 @@ const Dashboard = () => {
                                     <X className="h-4 w-4" />
                                   </Button>
                                 </>
+                              )}
+                              {ait.status !== "pendente" && userRole === "admin" && (
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={async () => {
+                                    if (confirm(`Tem certeza que deseja excluir o AIT #${ait.numero_ait}?`)) {
+                                      try {
+                                        await deleteAIT.mutateAsync(ait.id);
+                                        toast({ title: "AIT Excluído", description: `AIT #${ait.numero_ait} foi removido.` });
+                                      } catch (error) {
+                                        toast({ title: "Erro", description: "Erro ao excluir AIT.", variant: "destructive" });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               )}
                             </div>
                           </td>
@@ -1258,65 +1287,96 @@ const Dashboard = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          <button
-            onClick={() => setActiveTab("dashboard")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "dashboard"
-                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            }`}
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab("hierarquia")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "hierarquia"
-                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            }`}
-          >
-            <Users className="h-5 w-5" />
-            Hierarquia
-          </button>
-          <button
-            onClick={() => setActiveTab("ait")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "ait"
-                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            }`}
-          >
-            <FileText className="h-5 w-5" />
-            AITs
-          </button>
-          {userRole === "admin" && (
-            <button
-              onClick={() => setActiveTab("usuarios")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "usuarios"
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}
-            >
-              <Shield className="h-5 w-5" />
-              Usuários
-            </button>
-          )}
+        <nav className="flex-1 p-4 space-y-4">
+          {/* Geral */}
+          <div>
+            <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-4">Geral</p>
+            <div className="space-y-1">
+              <button
+                onClick={() => setActiveTab("dashboard")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "dashboard"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <LayoutDashboard className="h-5 w-5" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab("perfil")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "perfil"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <User className="h-5 w-5" />
+                Meu Perfil
+              </button>
+            </div>
+          </div>
+
+          {/* Administrativo */}
+          <div>
+            <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-4">Administrativo</p>
+            <div className="space-y-1">
+              <button
+                onClick={() => setActiveTab("hierarquia")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "hierarquia"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <Users className="h-5 w-5" />
+                Hierarquia
+              </button>
+              <button
+                onClick={() => setActiveTab("ait")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "ait"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <FileText className="h-5 w-5" />
+                AITs
+              </button>
+            </div>
+          </div>
+
+          {/* Sistema */}
           {(userRole === "admin" || userRole === "moderador") && (
-            <button
-              onClick={() => setActiveTab("config")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "config"
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}
-            >
-              <Settings className="h-5 w-5" />
-              Configurações
-            </button>
+            <div>
+              <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-4">Sistema</p>
+              <div className="space-y-1">
+                {userRole === "admin" && (
+                  <button
+                    onClick={() => setActiveTab("usuarios")}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === "usuarios"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <Shield className="h-5 w-5" />
+                    Usuários
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveTab("config")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === "config"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  }`}
+                >
+                  <Settings className="h-5 w-5" />
+                  Configurações
+                </button>
+              </div>
+            </div>
           )}
         </nav>
 

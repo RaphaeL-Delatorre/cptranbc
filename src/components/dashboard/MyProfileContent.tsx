@@ -1,0 +1,363 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useAITs, type AIT } from "@/hooks/useAITs";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  User, 
+  Mail, 
+  Key, 
+  FileText, 
+  Eye,
+  Check,
+  X,
+  Loader2,
+  Edit,
+  Save,
+  Download
+} from "lucide-react";
+import { exportAITToPDF } from "@/utils/pdfExport";
+
+export const MyProfileContent = () => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { data: aits = [], isLoading: aitsLoading } = useAITs();
+  
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [profileData, setProfileData] = useState({
+    nome: "",
+    email: user?.email || ""
+  });
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [saving, setSaving] = useState(false);
+  const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
+
+  // Filter AITs created by this user
+  const myAITs = aits.filter(ait => ait.agente_id === user?.id);
+
+  const handleUpdateProfile = async () => {
+    if (!profileData.email.trim()) {
+      toast({ title: "Erro", description: "O email é obrigatório.", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: profileData.email
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Perfil Atualizado", description: "Suas informações foram atualizadas com sucesso." });
+      setIsEditingProfile(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Erro ao atualizar perfil.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword.length < 6) {
+      toast({ title: "Erro", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({ title: "Erro", description: "As senhas não coincidem.", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Senha Alterada", description: "Sua senha foi alterada com sucesso." });
+      setIsChangingPassword(false);
+      setPasswordData({ newPassword: "", confirmPassword: "" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Erro ao alterar senha.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pendente":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Pendente</span>;
+      case "aprovado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-success/20 text-success">Aprovado</span>;
+      case "recusado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">Recusado</span>;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-display text-2xl font-bold">Meu Perfil</h2>
+
+      {/* Profile Info Card */}
+      <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary-foreground">
+                {user?.email?.charAt(0).toUpperCase() || "U"}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-display text-xl font-bold">{user?.email}</h3>
+              <p className="text-sm text-muted-foreground">Usuário do Sistema</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => setIsEditingProfile(!isEditingProfile)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Editar Perfil
+          </Button>
+        </div>
+
+        {isEditingProfile && (
+          <div className="border-t border-border/50 pt-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="email">
+                  <Mail className="h-4 w-4 inline mr-2" />
+                  E-mail
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profileData.email}
+                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                  placeholder="seu@email.com"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleUpdateProfile} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Salvar
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Change Password Card */}
+      <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Key className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Alterar Senha</h3>
+              <p className="text-sm text-muted-foreground">Atualize sua senha de acesso</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => setIsChangingPassword(!isChangingPassword)}>
+            Alterar Senha
+          </Button>
+        </div>
+
+        {isChangingPassword && (
+          <div className="border-t border-border/50 pt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="newPassword">Nova Senha</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleChangePassword} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+                Alterar Senha
+              </Button>
+              <Button variant="outline" onClick={() => {
+                setIsChangingPassword(false);
+                setPasswordData({ newPassword: "", confirmPassword: "" });
+              }}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* My AITs */}
+      <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+        <div className="p-6 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-bold">Meus AITs</h3>
+              <p className="text-sm text-muted-foreground">Histórico de AITs que você criou</p>
+            </div>
+          </div>
+        </div>
+
+        {aitsLoading ? (
+          <div className="p-8 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+          </div>
+        ) : myAITs.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">
+            Você ainda não criou nenhum AIT.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-4 font-semibold text-sm">ID</th>
+                  <th className="text-left p-4 font-semibold text-sm">Motorista</th>
+                  <th className="text-left p-4 font-semibold text-sm">Placa</th>
+                  <th className="text-left p-4 font-semibold text-sm">Data</th>
+                  <th className="text-left p-4 font-semibold text-sm">Status</th>
+                  <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {myAITs.map((ait) => (
+                  <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="p-4 font-medium">#{ait.numero_ait}</td>
+                    <td className="p-4">{ait.nome_condutor}</td>
+                    <td className="p-4 font-mono">{ait.emplacamento}</td>
+                    <td className="p-4 text-muted-foreground">
+                      {new Date(ait.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="p-4">{getStatusBadge(ait.status)}</td>
+                    <td className="p-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {ait.status !== "pendente" && (
+                          <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* AIT Detail Modal */}
+      {selectedAIT && (
+        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-display text-2xl font-bold">AIT #{selectedAIT.numero_ait}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Criado em {new Date(selectedAIT.created_at).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {getStatusBadge(selectedAIT.status)}
+                <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(null)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Motorista</p>
+                  <p className="font-semibold">{selectedAIT.nome_condutor}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Placa</p>
+                  <p className="font-semibold font-mono">{selectedAIT.emplacamento}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Viatura</p>
+                  <p className="font-semibold">{selectedAIT.viatura}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Marca/Modelo</p>
+                  <p className="font-semibold">{selectedAIT.marca_modelo}</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Artigos Infringidos</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAIT.artigos_infringidos?.map((art) => (
+                    <span key={art} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                      {art}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Providências Tomadas</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAIT.providencias_tomadas?.map((prov) => (
+                    <span key={prov} className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium">
+                      {prov}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6 pt-4 border-t border-border/50">
+              {selectedAIT.status !== "pendente" && (
+                <Button onClick={() => exportAITToPDF(selectedAIT)} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Exportar PDF
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setSelectedAIT(null)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

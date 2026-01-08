@@ -201,3 +201,22 @@ export const useDeleteAllAITs = () => {
     },
   });
 };
+
+export const useDeleteAIT = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("aits")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["aits"] });
+      queryClient.invalidateQueries({ queryKey: ["ait-stats"] });
+    },
+  });
+};
