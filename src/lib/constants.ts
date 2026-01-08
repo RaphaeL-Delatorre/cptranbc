@@ -44,15 +44,13 @@ export const providencias = [
   "Sem Providências",
 ];
 
-export const viaturas = ["Ranger", "XT Rocam"] as const;
-
-export const prefixosPorViatura: Record<string, string[]> = {
-  "Ranger": [
-    "T-01000 (Comando Trânsito)",
-    "T-01112",
-    "T-01113",
-    "T-01115",
-    "T-01118",
-  ],
-  "XT Rocam": ["T-01112-11"],
-};
+export const prefixosViaturas = [
+  "T-01112 (Duster 1)",
+  "T-01118 (Duster 1)",
+  "T-01000 - Comando Trânsito (Ranger)",
+  "T-01113 (Ranger)",
+  "T-01115 (Ranger)",
+  "T-01231-11 (F850)",
+  "T-01112-11 e T-01113-11 (XT 660)",
+  "CMM 13-1 (Guincho)",
+] as const;
