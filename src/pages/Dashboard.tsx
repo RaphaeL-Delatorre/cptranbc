@@ -39,10 +39,12 @@ import { useUsers, useCreateUserWithRole, useAssignRole, useRemoveRole, useDelet
 import { SettingsContent } from "@/components/dashboard/SettingsContent";
 import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts";
 import { MyProfileContent } from "@/components/dashboard/MyProfileContent";
+import { PontoEletronicoContent } from "@/components/dashboard/PontoEletronicoContent";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
+import { Clock } from "lucide-react";
 
-type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "usuarios" | "config";
+type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "ait-estatisticas" | "ponto" | "usuarios" | "config";
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -332,8 +334,6 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Statistics Charts */}
-            <AITStatisticsCharts />
           </div>
         );
 
@@ -548,6 +548,12 @@ const Dashboard = () => {
             </div>
           </div>
         );
+
+      case "ait-estatisticas":
+        return <AITStatisticsCharts />;
+
+      case "ponto":
+        return <PontoEletronicoContent />;
 
       case "ait":
         return (
@@ -1342,6 +1348,28 @@ const Dashboard = () => {
               >
                 <FileText className="h-5 w-5" />
                 AITs
+              </button>
+              <button
+                onClick={() => setActiveTab("ait-estatisticas")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all pl-8 ${
+                  activeTab === "ait-estatisticas"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                Estatísticas
+              </button>
+              <button
+                onClick={() => setActiveTab("ponto")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "ponto"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <Clock className="h-5 w-5" />
+                Ponto Eletrônico
               </button>
             </div>
           </div>

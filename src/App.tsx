@@ -12,6 +12,7 @@ import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import Setup from "./pages/Setup";
 import PoliceProfile from "./pages/PoliceProfile";
+import BatePonto from "./pages/BatePonto";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/hierarquia" element={<Hierarquia />} />
           <Route path="/regulamentos" element={<Regulamentos />} />
           <Route path="/ait" element={<AIT />} />
+          <Route path="/bate-ponto" element={<BatePonto />} />
           <Route path="/sobre" element={<Sobre />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/dashboard" element={<Dashboard />} />

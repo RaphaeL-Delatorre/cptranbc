@@ -321,7 +321,9 @@ export type Database = {
           funcao: Database["public"]["Enums"]["funcao_viatura"]
           id: string
           motivo_recusa: string | null
+          nome_policial: string | null
           observacao: string | null
+          patente: string | null
           pausas: Json | null
           status: Database["public"]["Enums"]["ponto_status"]
           tempo_total_segundos: number | null
@@ -338,7 +340,9 @@ export type Database = {
           funcao: Database["public"]["Enums"]["funcao_viatura"]
           id?: string
           motivo_recusa?: string | null
+          nome_policial?: string | null
           observacao?: string | null
+          patente?: string | null
           pausas?: Json | null
           status?: Database["public"]["Enums"]["ponto_status"]
           tempo_total_segundos?: number | null
@@ -355,7 +359,9 @@ export type Database = {
           funcao?: Database["public"]["Enums"]["funcao_viatura"]
           id?: string
           motivo_recusa?: string | null
+          nome_policial?: string | null
           observacao?: string | null
+          patente?: string | null
           pausas?: Json | null
           status?: Database["public"]["Enums"]["ponto_status"]
           tempo_total_segundos?: number | null
