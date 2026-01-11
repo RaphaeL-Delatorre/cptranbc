@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAITs, type AIT } from "@/hooks/useAITs";
 import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   User, 
   Mail, 
@@ -17,7 +18,8 @@ import {
   Loader2,
   Edit,
   Save,
-  Download
+  Download,
+  Search
 } from "lucide-react";
 import { exportAITToPDF } from "@/utils/pdfExport";
 
@@ -38,23 +40,66 @@ export const MyProfileContent = () => {
   });
   const [saving, setSaving] = useState(false);
   const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "aprovado" | "recusado">("todos");
+
+  // Load profile data
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (data) {
+        setProfileData(prev => ({ ...prev, nome: data.nome || "" }));
+      }
+    };
+    
+    loadProfile();
+  }, [user?.id]);
 
   // Filter AITs created by this user
-  const myAITs = aits.filter(ait => ait.agente_id === user?.id);
+  const myAITs = aits.filter(ait => {
+    if (ait.agente_id !== user?.id) return false;
+    if (statusFilter !== "todos" && ait.status !== statusFilter) return false;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      ait.nome_condutor.toLowerCase().includes(term) ||
+      ait.emplacamento.toLowerCase().includes(term) ||
+      ait.numero_ait.toString().includes(term)
+    );
+  });
 
   const handleUpdateProfile = async () => {
-    if (!profileData.email.trim()) {
-      toast({ title: "Erro", description: "O email é obrigatório.", variant: "destructive" });
+    if (!profileData.nome.trim() && !profileData.email.trim()) {
+      toast({ title: "Erro", description: "Preencha pelo menos um campo.", variant: "destructive" });
       return;
     }
 
     setSaving(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        email: profileData.email
-      });
+      // Update email in auth if changed
+      if (profileData.email && profileData.email !== user?.email) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: profileData.email
+        });
+        if (authError) throw authError;
+      }
 
-      if (error) throw error;
+      // Update nome in profiles table
+      if (profileData.nome.trim()) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ nome: profileData.nome })
+          .eq("user_id", user?.id);
+        
+        if (profileError) throw profileError;
+      }
 
       toast({ title: "Perfil Atualizado", description: "Suas informações foram atualizadas com sucesso." });
       setIsEditingProfile(false);
@@ -116,12 +161,12 @@ export const MyProfileContent = () => {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
               <span className="text-2xl font-bold text-primary-foreground">
-                {user?.email?.charAt(0).toUpperCase() || "U"}
+                {profileData.nome?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
               </span>
             </div>
             <div>
-              <h3 className="font-display text-xl font-bold">{user?.email}</h3>
-              <p className="text-sm text-muted-foreground">Usuário do Sistema</p>
+              <h3 className="font-display text-xl font-bold">{profileData.nome || user?.email}</h3>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
           <Button variant="outline" onClick={() => setIsEditingProfile(!isEditingProfile)}>
@@ -133,6 +178,18 @@ export const MyProfileContent = () => {
         {isEditingProfile && (
           <div className="border-t border-border/50 pt-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="nome">
+                  <User className="h-4 w-4 inline mr-2" />
+                  Nome
+                </Label>
+                <Input
+                  id="nome"
+                  value={profileData.nome}
+                  onChange={(e) => setProfileData({ ...profileData, nome: e.target.value })}
+                  placeholder="Seu nome"
+                />
+              </div>
               <div>
                 <Label htmlFor="email">
                   <Mail className="h-4 w-4 inline mr-2" />
@@ -217,9 +274,9 @@ export const MyProfileContent = () => {
         )}
       </div>
 
-      {/* My AITs */}
-      <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
-        <div className="p-6 border-b border-border/50">
+      {/* My AITs - Same layout as AITs tab */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <FileText className="h-5 w-5 text-primary" />
@@ -229,57 +286,79 @@ export const MyProfileContent = () => {
               <p className="text-sm text-muted-foreground">Histórico de AITs que você criou</p>
             </div>
           </div>
+          <div className="flex gap-2 items-center">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar AIT..." 
+                className="pl-9 w-48" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="pendente">Pendentes</SelectItem>
+                <SelectItem value="aprovado">Aprovados</SelectItem>
+                <SelectItem value="recusado">Recusados</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {aitsLoading ? (
-          <div className="p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          </div>
-        ) : myAITs.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            Você ainda não criou nenhum AIT.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-4 font-semibold text-sm">ID</th>
-                  <th className="text-left p-4 font-semibold text-sm">Motorista</th>
-                  <th className="text-left p-4 font-semibold text-sm">Placa</th>
-                  <th className="text-left p-4 font-semibold text-sm">Data</th>
-                  <th className="text-left p-4 font-semibold text-sm">Status</th>
-                  <th className="text-right p-4 font-semibold text-sm">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {myAITs.map((ait) => (
-                  <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4 font-medium">#{ait.numero_ait}</td>
-                    <td className="p-4">{ait.nome_condutor}</td>
-                    <td className="p-4 font-mono">{ait.emplacamento}</td>
-                    <td className="p-4 text-muted-foreground">
-                      {new Date(ait.created_at).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="p-4">{getStatusBadge(ait.status)}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {ait.status !== "pendente" && (
+        <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+          {aitsLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : myAITs.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              {searchTerm ? "Nenhum AIT encontrado." : "Você ainda não criou nenhum AIT."}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-4 font-semibold text-sm">ID</th>
+                    <th className="text-left p-4 font-semibold text-sm">Motorista</th>
+                    <th className="text-left p-4 font-semibold text-sm">Placa</th>
+                    <th className="text-left p-4 font-semibold text-sm">Data</th>
+                    <th className="text-left p-4 font-semibold text-sm">Status</th>
+                    <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {myAITs.map((ait) => (
+                    <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="p-4 font-medium">#{ait.numero_ait}</td>
+                      <td className="p-4">{ait.nome_condutor}</td>
+                      <td className="p-4 font-mono">{ait.emplacamento}</td>
+                      <td className="p-4 text-muted-foreground">
+                        {new Date(ait.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="p-4">{getStatusBadge(ait.status)}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
                             <Download className="h-4 w-4" />
                           </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* AIT Detail Modal */}
@@ -345,12 +424,10 @@ export const MyProfileContent = () => {
             </div>
 
             <div className="flex gap-2 mt-6 pt-4 border-t border-border/50">
-              {selectedAIT.status !== "pendente" && (
-                <Button onClick={() => exportAITToPDF(selectedAIT)} className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Exportar PDF
-                </Button>
-              )}
+              <Button onClick={() => exportAITToPDF(selectedAIT)} className="gap-2">
+                <Download className="h-4 w-4" />
+                Exportar PDF
+              </Button>
               <Button variant="outline" onClick={() => setSelectedAIT(null)}>
                 Fechar
               </Button>
