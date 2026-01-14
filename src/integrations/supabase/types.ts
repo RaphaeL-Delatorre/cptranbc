@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           agente_id: string | null
           aprovado_por: string | null
+          aprovador_nome: string | null
           artigos_infringidos: string[]
           created_at: string
           data_aprovacao: string | null
@@ -52,6 +53,7 @@ export type Database = {
         Insert: {
           agente_id?: string | null
           aprovado_por?: string | null
+          aprovador_nome?: string | null
           artigos_infringidos?: string[]
           created_at?: string
           data_aprovacao?: string | null
@@ -86,6 +88,7 @@ export type Database = {
         Update: {
           agente_id?: string | null
           aprovado_por?: string | null
+          aprovador_nome?: string | null
           artigos_infringidos?: string[]
           created_at?: string
           data_aprovacao?: string | null
@@ -314,6 +317,7 @@ export type Database = {
       pontos_eletronicos: {
         Row: {
           aprovado_por: string | null
+          aprovador_nome: string | null
           created_at: string
           data_aprovacao: string | null
           data_fim: string | null
@@ -325,14 +329,17 @@ export type Database = {
           observacao: string | null
           patente: string | null
           pausas: Json | null
+          ponto_discord: string | null
           status: Database["public"]["Enums"]["ponto_status"]
           tempo_total_segundos: number | null
           updated_at: string
           user_id: string
+          viatura: string | null
           viatura_id: string | null
         }
         Insert: {
           aprovado_por?: string | null
+          aprovador_nome?: string | null
           created_at?: string
           data_aprovacao?: string | null
           data_fim?: string | null
@@ -344,14 +351,17 @@ export type Database = {
           observacao?: string | null
           patente?: string | null
           pausas?: Json | null
+          ponto_discord?: string | null
           status?: Database["public"]["Enums"]["ponto_status"]
           tempo_total_segundos?: number | null
           updated_at?: string
           user_id: string
+          viatura?: string | null
           viatura_id?: string | null
         }
         Update: {
           aprovado_por?: string | null
+          aprovador_nome?: string | null
           created_at?: string
           data_aprovacao?: string | null
           data_fim?: string | null
@@ -363,10 +373,12 @@ export type Database = {
           observacao?: string | null
           patente?: string | null
           pausas?: Json | null
+          ponto_discord?: string | null
           status?: Database["public"]["Enums"]["ponto_status"]
           tempo_total_segundos?: number | null
           updated_at?: string
           user_id?: string
+          viatura?: string | null
           viatura_id?: string | null
         }
         Relationships: [

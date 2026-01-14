@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, User, Clock, Play, Pause, Square, LogIn, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, User, Clock, Play, Pause, Square, LogIn, Loader2, Car, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreatePonto, usePausePonto, useResumePonto, useFinalizePonto, usePontoPendente, formatDuration } from "@/hooks/usePontoEletronico";
-import { patentes } from "@/lib/constants";
+import { useCreatePonto, usePausePonto, useResumePonto, useFinalizePonto, usePontoPendente, useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
+import { useViaturas } from "@/hooks/useViaturas";
+import { patentes, prefixosViaturas } from "@/lib/constants";
 
 const funcoesViatura = [
   { value: "motorista", label: "Motorista" },
@@ -23,10 +24,13 @@ const BatePonto = () => {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [showMeusPontos, setShowMeusPontos] = useState(false);
   const [formData, setFormData] = useState({
     funcao: "",
+    viatura: "",
     patente: "",
     nomePolicial: "",
+    pontoDiscord: "",
   });
   
   // Timer state
@@ -35,6 +39,8 @@ const BatePonto = () => {
   
   // Hooks
   const { data: activePonto, isLoading: pontoLoading } = usePontoPendente();
+  const { data: meusPontos = [], isLoading: meusPontosLoading } = useMeusPontos();
+  const { data: viaturas = [] } = useViaturas();
   const createPonto = useCreatePonto();
   const pausePonto = usePausePonto();
   const resumePonto = useResumePonto();
@@ -126,6 +132,7 @@ const BatePonto = () => {
     switch (step) {
       case 1:
         if (!formData.funcao) return { valid: false, message: "Selecione sua função" };
+        if (!formData.viatura) return { valid: false, message: "Selecione a viatura" };
         return { valid: true, message: "" };
       case 2:
         if (!formData.patente) return { valid: false, message: "Selecione sua patente" };
@@ -163,6 +170,8 @@ const BatePonto = () => {
         funcao: formData.funcao,
         patente: formData.patente,
         nome_policial: formData.nomePolicial,
+        viatura: formData.viatura,
+        ponto_discord: formData.pontoDiscord || undefined,
       });
       toast({ title: "Ponto Iniciado", description: "Seu ponto eletrônico foi iniciado com sucesso." });
     } catch (error) {
@@ -200,11 +209,100 @@ const BatePonto = () => {
         title: "Ponto Finalizado", 
         description: "Seu ponto foi encerrado e enviado para aprovação." 
       });
-      navigate("/dashboard");
+      // Reset form and go back to step 1
+      setFormData({
+        funcao: "",
+        viatura: "",
+        patente: "",
+        nomePolicial: "",
+        pontoDiscord: "",
+      });
+      setElapsedTime(0);
+      setCurrentStep(1);
     } catch (error) {
       toast({ title: "Erro", description: "Erro ao finalizar ponto.", variant: "destructive" });
     }
   };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pendente":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Pendente</span>;
+      case "aprovado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-success/20 text-success">Aprovado</span>;
+      case "recusado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">Recusado</span>;
+      default:
+        return null;
+    }
+  };
+
+  // Meus Pontos view
+  if (showMeusPontos) {
+    const finishedPontos = meusPontos.filter(p => ["pendente", "aprovado", "recusado"].includes(p.status));
+    
+    return (
+      <MainLayout>
+        <section className="py-16 md:py-24 min-h-screen">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="font-display text-3xl font-bold mb-2">Meus Pontos</h1>
+                <p className="text-muted-foreground">Histórico de pontos eletrônicos</p>
+              </div>
+              <Button variant="outline" onClick={() => setShowMeusPontos(false)} className="gap-2">
+                <ChevronLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+            </div>
+
+            <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+              {meusPontosLoading ? (
+                <div className="p-8 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : finishedPontos.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Você ainda não tem pontos registrados.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-4 font-semibold text-sm">Data</th>
+                        <th className="text-left p-4 font-semibold text-sm">Função</th>
+                        <th className="text-left p-4 font-semibold text-sm">Viatura</th>
+                        <th className="text-left p-4 font-semibold text-sm">Duração</th>
+                        <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {finishedPontos.map((ponto) => (
+                        <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-4">{new Date(ponto.data_inicio).toLocaleDateString('pt-BR')}</td>
+                          <td className="p-4">{funcoesViatura.find(f => f.value === ponto.funcao)?.label || ponto.funcao}</td>
+                          <td className="p-4">{ponto.viatura || "-"}</td>
+                          <td className="p-4 font-mono">{formatDuration(ponto.tempo_total_segundos || 0)}</td>
+                          <td className="p-4">
+                            {getStatusBadge(ponto.status)}
+                            {ponto.status === "recusado" && ponto.motivo_recusa && (
+                              <p className="text-xs text-destructive mt-1">Motivo: {ponto.motivo_recusa}</p>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      </MainLayout>
+    );
+  }
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -213,17 +311,17 @@ const BatePonto = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <User className="h-6 w-6 text-primary" />
+                <Car className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-display text-xl font-bold">Função na Viatura</h3>
-                <p className="text-sm text-muted-foreground">Selecione sua função</p>
+                <h3 className="font-display text-xl font-bold">Função e Viatura</h3>
+                <p className="text-sm text-muted-foreground">Selecione sua função e a viatura</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <Label>Sua Função</Label>
+                <Label>Sua Função *</Label>
                 <Select value={formData.funcao} onValueChange={v => handleInputChange("funcao", v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione sua função" />
@@ -231,6 +329,20 @@ const BatePonto = () => {
                   <SelectContent>
                     {funcoesViatura.map(f => (
                       <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Viatura (Prefixo) *</Label>
+                <Select value={formData.viatura} onValueChange={v => handleInputChange("viatura", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a viatura" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prefixosViaturas.map(p => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -254,7 +366,7 @@ const BatePonto = () => {
 
             <div className="space-y-4">
               <div>
-                <Label>Patente</Label>
+                <Label>Patente *</Label>
                 <Select value={formData.patente} onValueChange={v => handleInputChange("patente", v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione sua patente" />
@@ -268,12 +380,22 @@ const BatePonto = () => {
               </div>
 
               <div>
-                <Label htmlFor="nomePolicial">Nome/Sobrenome</Label>
+                <Label htmlFor="nomePolicial">Nome/Sobrenome *</Label>
                 <Input 
                   id="nomePolicial" 
                   value={formData.nomePolicial} 
                   onChange={e => handleInputChange("nomePolicial", e.target.value)} 
                   placeholder="Digite seu nome e sobrenome" 
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="pontoDiscord">Ponto Discord (opcional)</Label>
+                <Input 
+                  id="pontoDiscord" 
+                  value={formData.pontoDiscord} 
+                  onChange={e => handleInputChange("pontoDiscord", e.target.value)} 
+                  placeholder="Seu nome no Discord" 
                 />
               </div>
             </div>
@@ -384,7 +506,7 @@ const BatePonto = () => {
   };
 
   const stepIcons = [
-    { icon: User, label: "Função" },
+    { icon: Car, label: "Função" },
     { icon: User, label: "Policial" },
     { icon: Clock, label: "Ponto" },
   ];
@@ -440,25 +562,50 @@ const BatePonto = () => {
           <div className="bg-card rounded-2xl shadow-card border border-border/50 p-8">
             {renderStepContent()}
 
-            {/* Navigation Buttons - Only show if no active ponto */}
-            {!activePonto && currentStep < 3 && (
-              <div className="flex justify-between mt-8 pt-6 border-t border-border/50">
-                <Button
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="gap-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-
-                <Button onClick={nextStep} className="gap-2">
-                  Próximo
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-border/50">
+              {/* Left side - Back button or Meus Pontos */}
+              <div>
+                {currentStep === 1 && !activePonto ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowMeusPontos(true)}
+                    className="gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Meus Pontos
+                  </Button>
+                ) : currentStep > 1 && !activePonto ? (
+                  <Button
+                    variant="outline"
+                    onClick={prevStep}
+                    className="gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Voltar
+                  </Button>
+                ) : activePonto ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowMeusPontos(true)}
+                    className="gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Meus Pontos
+                  </Button>
+                ) : null}
               </div>
-            )}
+
+              {/* Right side - Next button */}
+              <div>
+                {!activePonto && currentStep < 3 && (
+                  <Button onClick={nextStep} className="gap-2">
+                    Próximo
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
