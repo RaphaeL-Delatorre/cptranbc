@@ -6,6 +6,8 @@ export interface PontoEletronico {
   id: string;
   user_id: string;
   viatura_id: string | null;
+  viatura: string | null;
+  ponto_discord: string | null;
   funcao: "motorista" | "encarregado" | "patrulheiro" | "apoio";
   patente: string | null;
   nome_policial: string | null;
@@ -16,6 +18,7 @@ export interface PontoEletronico {
   pausas: { inicio: string; fim?: string }[] | null;
   observacao: string | null;
   aprovado_por: string | null;
+  aprovador_nome: string | null;
   data_aprovacao: string | null;
   motivo_recusa: string | null;
   created_at: string;
@@ -34,6 +37,27 @@ export const usePontosEletronicos = () => {
       if (error) throw error;
       return data as PontoEletronico[];
     },
+  });
+};
+
+export const useMeusPontos = () => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ["meus-pontos", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("pontos_eletronicos")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as PontoEletronico[];
+    },
+    enabled: !!user?.id,
   });
 };
 
@@ -67,7 +91,9 @@ export const useCreatePonto = () => {
       funcao: string;
       patente: string;
       nome_policial: string;
+      viatura?: string;
       viatura_id?: string;
+      ponto_discord?: string;
       observacao?: string;
     }) => {
       const { data: session } = await supabase.auth.getSession();
@@ -80,7 +106,9 @@ export const useCreatePonto = () => {
           funcao: data.funcao as "motorista" | "encarregado" | "patrulheiro" | "apoio",
           patente: data.patente,
           nome_policial: data.nome_policial,
+          viatura: data.viatura || null,
           viatura_id: data.viatura_id || null,
+          ponto_discord: data.ponto_discord || null,
           observacao: data.observacao || null,
           status: "ativo",
           data_inicio: new Date().toISOString(),
@@ -94,6 +122,7 @@ export const useCreatePonto = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
       queryClient.invalidateQueries({ queryKey: ["ponto-pendente"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };
@@ -127,6 +156,7 @@ export const usePausePonto = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
       queryClient.invalidateQueries({ queryKey: ["ponto-pendente"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };
@@ -162,6 +192,7 @@ export const useResumePonto = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
       queryClient.invalidateQueries({ queryKey: ["ponto-pendente"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };
@@ -214,6 +245,7 @@ export const useFinalizePonto = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
       queryClient.invalidateQueries({ queryKey: ["ponto-pendente"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };
@@ -225,11 +257,23 @@ export const useApprovePonto = () => {
     mutationFn: async (pontoId: string) => {
       const { data: session } = await supabase.auth.getSession();
       
+      // Get approver name
+      let aprovadorNome = null;
+      if (session.session?.user?.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("nome")
+          .eq("user_id", session.session.user.id)
+          .single();
+        aprovadorNome = profile?.nome || session.session.user.email;
+      }
+      
       const { error } = await supabase
         .from("pontos_eletronicos")
         .update({ 
           status: "aprovado",
           aprovado_por: session.session?.user?.id,
+          aprovador_nome: aprovadorNome,
           data_aprovacao: new Date().toISOString()
         })
         .eq("id", pontoId);
@@ -238,6 +282,7 @@ export const useApprovePonto = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };
@@ -247,10 +292,26 @@ export const useRejectPonto = () => {
 
   return useMutation({
     mutationFn: async ({ pontoId, motivo }: { pontoId: string; motivo?: string }) => {
+      const { data: session } = await supabase.auth.getSession();
+      
+      // Get rejector name
+      let aprovadorNome = null;
+      if (session.session?.user?.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("nome")
+          .eq("user_id", session.session.user.id)
+          .single();
+        aprovadorNome = profile?.nome || session.session.user.email;
+      }
+      
       const { error } = await supabase
         .from("pontos_eletronicos")
         .update({ 
           status: "recusado",
+          aprovado_por: session.session?.user?.id,
+          aprovador_nome: aprovadorNome,
+          data_aprovacao: new Date().toISOString(),
           motivo_recusa: motivo || null
         })
         .eq("id", pontoId);
@@ -259,6 +320,7 @@ export const useRejectPonto = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };
@@ -277,6 +339,7 @@ export const useDeletePonto = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
     },
   });
 };

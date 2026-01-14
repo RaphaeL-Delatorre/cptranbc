@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Lock, Mail, Eye, EyeOff, User, Loader2 } from "lucide-react";
 import logoTransito from "@/assets/logo-transito.png";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +32,7 @@ const Admin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [credentials, setCredentials] = useState({
     email: "",
@@ -38,6 +40,15 @@ const Admin = () => {
     confirmPassword: "",
     nome: "",
   });
+
+  // Load saved email on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("savedEmail");
+    if (savedEmail) {
+      setCredentials(prev => ({ ...prev, email: savedEmail }));
+      setRememberMe(true);
+    }
+  }, []);
 
   // Determine user role
   const userRole = userRoles.find(r => r.role === "admin") ? "admin" : 
@@ -77,6 +88,14 @@ const Admin = () => {
     }
 
     setLoading(true);
+    
+    // Save email if remember me is checked
+    if (rememberMe) {
+      localStorage.setItem("savedEmail", credentials.email);
+    } else {
+      localStorage.removeItem("savedEmail");
+    }
+    
     const { error } = await signIn(credentials.email, credentials.password);
     setLoading(false);
     // Redirect will be handled by the useEffect above
@@ -209,6 +228,19 @@ const Admin = () => {
                   />
                 </div>
                 {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword}</p>}
+              </div>
+            )}
+
+            {!isSignUp && (
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="rememberMe" 
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <Label htmlFor="rememberMe" className="text-sm cursor-pointer">
+                  Lembrar meu e-mail
+                </Label>
               </div>
             )}
 
