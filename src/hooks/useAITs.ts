@@ -159,13 +159,25 @@ export const useUpdateAITStatus = () => {
       status: "aprovado" | "recusado";
       motivo_recusa?: string;
     }) => {
-      const { data: user } = await supabase.auth.getUser();
+      const { data: session } = await supabase.auth.getSession();
+      
+      // Get approver name
+      let aprovadorNome = null;
+      if (session.session?.user?.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("nome")
+          .eq("user_id", session.session.user.id)
+          .single();
+        aprovadorNome = profile?.nome || session.session.user.email;
+      }
 
       const { data, error } = await supabase
         .from("aits")
         .update({
           status,
-          aprovado_por: user?.user?.id,
+          aprovado_por: session.session?.user?.id,
+          aprovador_nome: aprovadorNome,
           data_aprovacao: new Date().toISOString(),
           motivo_recusa: motivo_recusa || null,
         })

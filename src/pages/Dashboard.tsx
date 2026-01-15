@@ -40,6 +40,8 @@ import { SettingsContent } from "@/components/dashboard/SettingsContent";
 import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts";
 import { MyProfileContent } from "@/components/dashboard/MyProfileContent";
 import { PontoEletronicoContent } from "@/components/dashboard/PontoEletronicoContent";
+import { AITContent } from "@/components/dashboard/AITContent";
+import { PontoEletronicoContent } from "@/components/dashboard/PontoEletronicoContent";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock } from "lucide-react";
@@ -556,7 +558,7 @@ const Dashboard = () => {
         return <PontoEletronicoContent />;
 
       case "ait":
-        return (
+        return <AITContent />;
           <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <h2 className="font-display text-2xl font-bold">Gerenciar AITs</h2>
