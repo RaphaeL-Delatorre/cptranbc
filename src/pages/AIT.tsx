@@ -15,7 +15,7 @@ import { patentes, artigos, providencias, prefixosViaturas } from "@/lib/constan
 import { supabase } from "@/integrations/supabase/client";
 
 const initialFormData = {
-  // Step 1 - Identificação do Agente
+  // Step 1 - Identificação do Policial
   graduacao: "",
   nomeAgente: "",
   // Step 2 - Equipe e Viatura
@@ -34,11 +34,10 @@ const initialFormData = {
   // Step 3 - Imagens e Relatório
   imagensAutuacao: [] as File[],
   relatorio: "",
-  dataInicio: "",
-  horaInicio: "",
-  dataTermino: "",
-  horaTermino: "",
+  dataOcorrencia: "",
   // Step 4 - Dados do Condutor/Proprietário
+  hasMotorista: true,
+  hasProprietario: false,
   nomeCondutor: "",
   passaporteCondutor: "",
   nomeProprietario: "",
@@ -180,29 +179,22 @@ const AIT = () => {
         return { valid: true, message: "" };
       
       case 3:
-        if (!formData.dataInicio || !formData.horaInicio) return { valid: false, message: "Informe a data e hora de início" };
-        if (!formData.dataTermino || !formData.horaTermino) return { valid: false, message: "Informe a data e hora de término" };
-        
-        const startDateTime = new Date(`${formData.dataInicio}T${formData.horaInicio}`);
-        const endDateTime = new Date(`${formData.dataTermino}T${formData.horaTermino}`);
-        
-        if (formData.dataInicio === formData.dataTermino && endDateTime <= startDateTime) {
-          return { valid: false, message: "O horário de término deve ser posterior ao de início. Se o patrulhamento passou da meia-noite, ajuste a data de término para o dia seguinte." };
-        }
-        
-        if (endDateTime <= startDateTime) {
-          return { valid: false, message: "O horário de término deve ser posterior ao de início" };
-        }
-        
+        if (!formData.dataOcorrencia) return { valid: false, message: "Informe a data da ocorrência" };
         return { valid: true, message: "" };
       
       case 4:
-        const hasCondutor = formData.nomeCondutor.trim() && formData.passaporteCondutor.trim();
-        const hasProprietario = formData.nomeProprietario.trim() && formData.passaporteProprietario.trim();
+        const hasCondutor = formData.hasMotorista && formData.nomeCondutor.trim() && formData.passaporteCondutor.trim();
+        const hasProprietario = formData.hasProprietario && formData.nomeProprietario.trim() && formData.passaporteProprietario.trim();
         const hasVeiculo = formData.emplacamento.trim() && formData.marcaModelo.trim();
         
         if (!hasVeiculo) return { valid: false, message: "Informe os dados do veículo (emplacamento e marca/modelo)" };
         if (!hasCondutor && !hasProprietario) return { valid: false, message: "Informe os dados do motorista ou do proprietário" };
+        if (formData.hasMotorista && (!formData.nomeCondutor.trim() || !formData.passaporteCondutor.trim())) {
+          return { valid: false, message: "Preencha os dados completos do motorista" };
+        }
+        if (formData.hasProprietario && (!formData.nomeProprietario.trim() || !formData.passaporteProprietario.trim())) {
+          return { valid: false, message: "Preencha os dados completos do proprietário" };
+        }
         
         return { valid: true, message: "" };
       
@@ -248,34 +240,32 @@ const AIT = () => {
 
       const imageUrls = await uploadImages();
 
-      const dataInicio = formData.dataInicio && formData.horaInicio ? `${formData.dataInicio}T${formData.horaInicio}:00` : undefined;
-      const dataTermino = formData.dataTermino && formData.horaTermino ? `${formData.dataTermino}T${formData.horaTermino}:00` : undefined;
+      const dataInicio = formData.dataOcorrencia ? `${formData.dataOcorrencia}T00:00:00` : undefined;
 
-      await createAIT.mutateAsync({
-        graduacao: formData.graduacao,
-        nome_agente: formData.nomeAgente,
-        primeiro_homem: formData.primeiroHomem,
-        primeiro_homem_patente: formData.primeiroHomemPatente || undefined,
-        segundo_homem: formData.hasEncarregado ? formData.segundoHomem : undefined,
-        segundo_homem_patente: formData.hasEncarregado ? formData.segundoHomemPatente : undefined,
-        terceiro_homem: formData.hasTerceiroHomem ? formData.terceiroHomem : undefined,
-        terceiro_homem_patente: formData.hasTerceiroHomem ? formData.terceiroHomemPatente : undefined,
-        quarto_homem: formData.hasQuartoHomem ? formData.quartoHomem : undefined,
-        quarto_homem_patente: formData.hasQuartoHomem ? formData.quartoHomemPatente : undefined,
-        viatura: formData.prefixo,
-        relatorio: formData.relatorio,
-        nome_condutor: formData.nomeCondutor,
-        passaporte_condutor: formData.passaporteCondutor,
-        nome_proprietario: formData.nomeProprietario || undefined,
-        passaporte_proprietario: formData.passaporteProprietario || undefined,
-        emplacamento: formData.emplacamento,
-        marca_modelo: formData.marcaModelo,
-        artigos_infringidos: formData.artigosInfringidos,
-        providencias_tomadas: formData.providenciasTomadas,
-        data_inicio: dataInicio,
-        data_termino: dataTermino,
-        imagens: imageUrls
-      });
+        await createAIT.mutateAsync({
+          graduacao: formData.graduacao,
+          nome_agente: formData.nomeAgente,
+          primeiro_homem: formData.primeiroHomem,
+          primeiro_homem_patente: formData.primeiroHomemPatente || undefined,
+          segundo_homem: formData.hasEncarregado ? formData.segundoHomem : undefined,
+          segundo_homem_patente: formData.hasEncarregado ? formData.segundoHomemPatente : undefined,
+          terceiro_homem: formData.hasTerceiroHomem ? formData.terceiroHomem : undefined,
+          terceiro_homem_patente: formData.hasTerceiroHomem ? formData.terceiroHomemPatente : undefined,
+          quarto_homem: formData.hasQuartoHomem ? formData.quartoHomem : undefined,
+          quarto_homem_patente: formData.hasQuartoHomem ? formData.quartoHomemPatente : undefined,
+          viatura: formData.prefixo,
+          relatorio: formData.relatorio,
+          nome_condutor: formData.hasMotorista ? formData.nomeCondutor : "",
+          passaporte_condutor: formData.hasMotorista ? formData.passaporteCondutor : "",
+          nome_proprietario: formData.hasProprietario ? formData.nomeProprietario : undefined,
+          passaporte_proprietario: formData.hasProprietario ? formData.passaporteProprietario : undefined,
+          emplacamento: formData.emplacamento,
+          marca_modelo: formData.marcaModelo,
+          artigos_infringidos: formData.artigosInfringidos,
+          providencias_tomadas: formData.providenciasTomadas,
+          data_inicio: dataInicio,
+          imagens: imageUrls
+        });
 
       toast({
         title: "AIT Enviado!",
@@ -299,14 +289,24 @@ const AIT = () => {
       case 1:
         return (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <User className="h-6 w-6 text-primary" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <User className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-bold">Identificação do Policial Responsável pelo AIT</h3>
+                  <p className="text-sm text-muted-foreground">Informe seus dados</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-display text-xl font-bold">Identificação do Policial Responsável pelo AIT</h3>
-                <p className="text-sm text-muted-foreground">Informe seus dados</p>
-              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/dashboard")} 
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Meus AITs
+              </Button>
             </div>
 
             <div className="space-y-4">
@@ -500,46 +500,26 @@ const AIT = () => {
                 <Camera className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-display text-xl font-bold">Imagens, Data/Hora e Relatório</h3>
+                <h3 className="font-display text-xl font-bold">Imagens, Data e Relatório</h3>
                 <p className="text-sm text-muted-foreground">Documentação da autuação</p>
               </div>
             </div>
 
-            {/* Date/Time Section */}
+            {/* Date Section */}
             <div className="p-4 bg-primary/5 rounded-xl space-y-4 border-2 border-primary/20">
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
-                <h4 className="font-semibold text-base text-primary">Data e Hora da Ocorrência</h4>
+                <h4 className="font-semibold text-base text-primary">Data da Ocorrência</h4>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label className="font-semibold">Início</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Data</Label>
-                      <Input type="date" value={formData.dataInicio} onChange={e => handleInputChange("dataInicio", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Hora</Label>
-                      <Input type="time" value={formData.horaInicio} onChange={e => handleInputChange("horaInicio", e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <Label className="font-semibold">Término</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Data</Label>
-                      <Input type="date" value={formData.dataTermino} onChange={e => handleInputChange("dataTermino", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Hora</Label>
-                      <Input type="time" value={formData.horaTermino} onChange={e => handleInputChange("horaTermino", e.target.value)} />
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <Label>Data *</Label>
+                <Input 
+                  type="date" 
+                  value={formData.dataOcorrencia} 
+                  onChange={e => handleInputChange("dataOcorrencia", e.target.value)} 
+                  className="max-w-xs"
+                />
               </div>
             </div>
 
@@ -592,46 +572,73 @@ const AIT = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Motorista */}
+              {/* Checkboxes for Motorista/Proprietário */}
               <div className="p-4 bg-muted/50 rounded-xl space-y-3">
-                <h5 className="font-semibold text-sm text-muted-foreground">Motorista do Veículo</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="nomeCondutor">Nome do Motorista</Label>
-                    <Input id="nomeCondutor" value={formData.nomeCondutor} onChange={e => handleInputChange("nomeCondutor", e.target.value)} placeholder="Nome completo" />
+                <h4 className="font-semibold text-sm text-muted-foreground">Envolvidos (marque os presentes)</h4>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="hasMotorista" 
+                      checked={formData.hasMotorista}
+                      onCheckedChange={(checked) => handleInputChange("hasMotorista", checked as boolean)}
+                    />
+                    <Label htmlFor="hasMotorista" className="cursor-pointer">Motorista</Label>
                   </div>
-                  <div>
-                    <Label htmlFor="passaporteCondutor">Passaporte do Motorista</Label>
-                    <Input id="passaporteCondutor" value={formData.passaporteCondutor} onChange={e => handleInputChange("passaporteCondutor", e.target.value)} placeholder="Número do passaporte" />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="hasProprietario" 
+                      checked={formData.hasProprietario}
+                      onCheckedChange={(checked) => handleInputChange("hasProprietario", checked as boolean)}
+                    />
+                    <Label htmlFor="hasProprietario" className="cursor-pointer">Proprietário</Label>
                   </div>
                 </div>
               </div>
 
-              {/* Proprietário */}
-              <div className="p-4 bg-muted/50 rounded-xl space-y-3">
-                <h5 className="font-semibold text-sm text-muted-foreground">Proprietário do Veículo (opcional)</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="nomeProprietario">Nome do Proprietário</Label>
-                    <Input id="nomeProprietario" value={formData.nomeProprietario} onChange={e => handleInputChange("nomeProprietario", e.target.value)} placeholder="Nome completo" />
-                  </div>
-                  <div>
-                    <Label htmlFor="passaporteProprietario">Passaporte do Proprietário</Label>
-                    <Input id="passaporteProprietario" value={formData.passaporteProprietario} onChange={e => handleInputChange("passaporteProprietario", e.target.value)} placeholder="Número do passaporte" />
+              {/* Motorista (condicional) */}
+              {formData.hasMotorista && (
+                <div className="p-4 bg-primary/10 rounded-xl space-y-3 border-2 border-primary/30 animate-fade-in">
+                  <h5 className="font-semibold text-sm text-primary">Motorista do Veículo *</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="nomeCondutor">Nome do Motorista *</Label>
+                      <Input id="nomeCondutor" value={formData.nomeCondutor} onChange={e => handleInputChange("nomeCondutor", e.target.value)} placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <Label htmlFor="passaporteCondutor">Passaporte do Motorista *</Label>
+                      <Input id="passaporteCondutor" value={formData.passaporteCondutor} onChange={e => handleInputChange("passaporteCondutor", e.target.value)} placeholder="Número do passaporte" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Proprietário (condicional) */}
+              {formData.hasProprietario && (
+                <div className="p-4 bg-muted/50 rounded-xl space-y-3 animate-fade-in">
+                  <h5 className="font-semibold text-sm text-muted-foreground">Proprietário do Veículo *</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="nomeProprietario">Nome do Proprietário *</Label>
+                      <Input id="nomeProprietario" value={formData.nomeProprietario} onChange={e => handleInputChange("nomeProprietario", e.target.value)} placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <Label htmlFor="passaporteProprietario">Passaporte do Proprietário *</Label>
+                      <Input id="passaporteProprietario" value={formData.passaporteProprietario} onChange={e => handleInputChange("passaporteProprietario", e.target.value)} placeholder="Número do passaporte" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Veículo */}
               <div className="p-4 bg-primary/5 rounded-xl space-y-3 border-2 border-primary/20">
-                <h5 className="font-semibold text-sm text-primary">Veículo</h5>
+                <h5 className="font-semibold text-sm text-primary">Veículo *</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="emplacamento">Emplacamento</Label>
+                    <Label htmlFor="emplacamento">Emplacamento *</Label>
                     <Input id="emplacamento" value={formData.emplacamento} onChange={e => handleInputChange("emplacamento", e.target.value.toUpperCase())} placeholder="XXX-0000" />
                   </div>
                   <div>
-                    <Label htmlFor="marcaModelo">Marca/Modelo</Label>
+                    <Label htmlFor="marcaModelo">Marca/Modelo *</Label>
                     <Input id="marcaModelo" value={formData.marcaModelo} onChange={e => handleInputChange("marcaModelo", e.target.value)} placeholder="Ex: Fiat Uno" />
                   </div>
                 </div>
@@ -695,7 +702,7 @@ const AIT = () => {
   };
 
   const stepIcons = [
-    { icon: User, label: "Agente" },
+    { icon: User, label: "Policial" },
     { icon: Car, label: "Equipe" },
     { icon: Camera, label: "Dados" },
     { icon: FileText, label: "Veículo" },

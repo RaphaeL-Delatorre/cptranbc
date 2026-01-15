@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAITs, type AIT } from "@/hooks/useAITs";
+import { useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
@@ -19,15 +20,27 @@ import {
   Edit,
   Save,
   Download,
-  Search
+  Search,
+  Clock,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { exportAITToPDF } from "@/utils/pdfExport";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type ProfileTab = "aits" | "pontos";
 
 export const MyProfileContent = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: aits = [], isLoading: aitsLoading } = useAITs();
+  const { data: pontos = [], isLoading: pontosLoading } = useMeusPontos();
   
+  const [profileTab, setProfileTab] = useState<ProfileTab>("aits");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -40,6 +53,7 @@ export const MyProfileContent = () => {
   });
   const [saving, setSaving] = useState(false);
   const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
+  const [selectedPonto, setSelectedPonto] = useState<PontoEletronico | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "aprovado" | "recusado">("todos");
 
@@ -61,6 +75,17 @@ export const MyProfileContent = () => {
     
     loadProfile();
   }, [user?.id]);
+
+  // Filter pontos created by this user
+  const myPontos = pontos.filter(ponto => {
+    if (statusFilter !== "todos" && ponto.status !== statusFilter) return false;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      ponto.nome_policial?.toLowerCase().includes(term) ||
+      ponto.viatura?.toLowerCase().includes(term)
+    );
+  });
 
   // Filter AITs created by this user
   const myAITs = aits.filter(ait => {
@@ -274,23 +299,45 @@ export const MyProfileContent = () => {
         )}
       </div>
 
-      {/* My AITs - Same layout as AITs tab */}
+      {/* My AITs & Pontos Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-primary" />
+              {profileTab === "aits" ? <FileText className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-primary" />}
             </div>
             <div>
-              <h3 className="font-display text-lg font-bold">Meus AITs</h3>
-              <p className="text-sm text-muted-foreground">Histórico de AITs que você criou</p>
+              <h3 className="font-display text-lg font-bold">
+                {profileTab === "aits" ? "Meus AITs" : "Meus Pontos"}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {profileTab === "aits" ? "Histórico de AITs" : "Histórico de Pontos Eletrônicos"}
+              </p>
             </div>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
+            <div className="flex gap-1">
+              <Button 
+                variant={profileTab === "aits" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => { setProfileTab("aits"); setSearchTerm(""); setStatusFilter("todos"); }}
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                AITs
+              </Button>
+              <Button 
+                variant={profileTab === "pontos" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => { setProfileTab("pontos"); setSearchTerm(""); setStatusFilter("todos"); }}
+              >
+                <Clock className="h-4 w-4 mr-1" />
+                Pontos
+              </Button>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Buscar AIT..." 
+                placeholder="Buscar..." 
                 className="pl-9 w-48" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -310,55 +357,108 @@ export const MyProfileContent = () => {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
-          {aitsLoading ? (
-            <div className="p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-            </div>
-          ) : myAITs.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              {searchTerm ? "Nenhum AIT encontrado." : "Você ainda não criou nenhum AIT."}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left p-4 font-semibold text-sm">ID</th>
-                    <th className="text-left p-4 font-semibold text-sm">Motorista</th>
-                    <th className="text-left p-4 font-semibold text-sm">Placa</th>
-                    <th className="text-left p-4 font-semibold text-sm">Data</th>
-                    <th className="text-left p-4 font-semibold text-sm">Status</th>
-                    <th className="text-right p-4 font-semibold text-sm">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {myAITs.map((ait) => (
-                    <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium">#{ait.numero_ait}</td>
-                      <td className="p-4">{ait.nome_condutor}</td>
-                      <td className="p-4 font-mono">{ait.emplacamento}</td>
-                      <td className="p-4 text-muted-foreground">
-                        {new Date(ait.created_at).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="p-4">{getStatusBadge(ait.status)}</td>
-                      <td className="p-4 text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
+        {/* AITs Tab */}
+        {profileTab === "aits" && (
+          <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+            {aitsLoading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : myAITs.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                {searchTerm ? "Nenhum AIT encontrado." : "Você ainda não criou nenhum AIT."}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-4 font-semibold text-sm">ID</th>
+                      <th className="text-left p-4 font-semibold text-sm">Motorista</th>
+                      <th className="text-left p-4 font-semibold text-sm">Placa</th>
+                      <th className="text-left p-4 font-semibold text-sm">Data</th>
+                      <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {myAITs.map((ait) => (
+                      <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4 font-medium">#{ait.numero_ait}</td>
+                        <td className="p-4">{ait.nome_condutor}</td>
+                        <td className="p-4 font-mono">{ait.emplacamento}</td>
+                        <td className="p-4 text-muted-foreground">
+                          {new Date(ait.created_at).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="p-4">{getStatusBadge(ait.status)}</td>
+                        <td className="p-4 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pontos Tab */}
+        {profileTab === "pontos" && (
+          <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+            {pontosLoading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : myPontos.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                {searchTerm ? "Nenhum ponto encontrado." : "Você ainda não registrou nenhum ponto."}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-4 font-semibold text-sm">Data</th>
+                      <th className="text-left p-4 font-semibold text-sm">Função</th>
+                      <th className="text-left p-4 font-semibold text-sm">Viatura</th>
+                      <th className="text-left p-4 font-semibold text-sm">Duração</th>
+                      <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {myPontos.map((ponto) => (
+                      <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4 text-muted-foreground">
+                          {new Date(ponto.data_inicio).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="p-4 capitalize">{ponto.funcao}</td>
+                        <td className="p-4">{ponto.viatura || "-"}</td>
+                        <td className="p-4 font-mono">
+                          {ponto.tempo_total_segundos ? formatDuration(ponto.tempo_total_segundos) : "-"}
+                        </td>
+                        <td className="p-4">{getStatusBadge(ponto.status)}</td>
+                        <td className="p-4 text-right">
+                          <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(ponto)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* AIT Detail Modal */}
