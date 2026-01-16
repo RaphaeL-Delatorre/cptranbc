@@ -6,23 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAITs } from "@/hooks/useAITs";
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO, isWithinInterval, subWeeks, subMonths, isAfter, isBefore, startOfDay, endOfDay, subDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from "date-fns";
+import { usePontosEletronicos, formatDuration } from "@/hooks/usePontoEletronico";
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO, isWithinInterval, subWeeks, subMonths, isAfter, isBefore, startOfDay, endOfDay, subDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfYear, endOfYear, subYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BarChart3, TrendingUp, Car, FileText, Scale, UserCheck, AlertTriangle, Shield, Users, Download, Calendar, LineChart } from "lucide-react";
+import { BarChart3, TrendingUp, Car, FileText, Scale, UserCheck, AlertTriangle, Shield, Users, Download, Calendar, LineChart, Clock, Trophy, TrendingDown } from "lucide-react";
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 type FilterType = "semana" | "mes" | "total";
+type PatrulhaFilterType = "semana" | "mes" | "ano";
 
 export const AITStatisticsCharts = () => {
   const { data: aits = [] } = useAITs();
+  const { data: pontos = [] } = usePontosEletronicos();
   const navigate = useNavigate();
   const [filterType, setFilterType] = useState<FilterType>("total");
   const [selectedWeek, setSelectedWeek] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [patrulhaFilter, setPatrulhaFilter] = useState<PatrulhaFilterType>("semana");
 
   // Generate week options (last 12 weeks)
   const weekOptions = useMemo(() => {
@@ -224,6 +228,62 @@ export const AITStatisticsCharts = () => {
       artigoMaisInfringido: allArtigos[0]?.name || "N/A"
     };
   }, [filteredAITs]);
+
+  // Calculate patrol time statistics (Top 10 policiais que mais/menos patrulham)
+  const patrulhaStats = useMemo(() => {
+    const now = new Date();
+    let start: Date, end: Date;
+
+    if (patrulhaFilter === "semana") {
+      start = startOfWeek(now, { locale: ptBR });
+      end = endOfWeek(now, { locale: ptBR });
+    } else if (patrulhaFilter === "mes") {
+      start = startOfMonth(now);
+      end = endOfMonth(now);
+    } else {
+      start = startOfYear(now);
+      end = endOfYear(now);
+    }
+
+    // Filter approved pontos within the time range
+    const filteredPontos = pontos.filter(ponto => {
+      if (ponto.status !== "aprovado") return false;
+      const pontoDate = parseISO(ponto.data_inicio);
+      return isWithinInterval(pontoDate, { start, end });
+    });
+
+    // Aggregate time by police officer
+    const policialTimes: Record<string, { nome: string; totalSeconds: number }> = {};
+    
+    filteredPontos.forEach(ponto => {
+      const nome = ponto.nome_policial || "Desconhecido";
+      if (!policialTimes[nome]) {
+        policialTimes[nome] = { nome, totalSeconds: 0 };
+      }
+      policialTimes[nome].totalSeconds += ponto.tempo_total_segundos || 0;
+    });
+
+    // Sort by time (descending for top, ascending for bottom)
+    const sortedByTime = Object.values(policialTimes).sort((a, b) => b.totalSeconds - a.totalSeconds);
+    
+    const top10 = sortedByTime.slice(0, 10).map((p, idx) => ({
+      rank: idx + 1,
+      nome: p.nome,
+      totalSeconds: p.totalSeconds,
+      formatted: formatDuration(p.totalSeconds)
+    }));
+
+    // Get bottom 10 (those with least time, but at least some time)
+    const withTime = sortedByTime.filter(p => p.totalSeconds > 0);
+    const bottom10 = withTime.slice(-10).reverse().map((p, idx) => ({
+      rank: idx + 1,
+      nome: p.nome,
+      totalSeconds: p.totalSeconds,
+      formatted: formatDuration(p.totalSeconds)
+    }));
+
+    return { top10, bottom10 };
+  }, [pontos, patrulhaFilter]);
 
   // Export statistics to PDF
   const exportStatisticsToPDF = () => {
@@ -717,6 +777,107 @@ export const AITStatisticsCharts = () => {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Patrol Time Statistics */}
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                Top 10 Policiais - Tempo de Patrulha
+              </CardTitle>
+              <Select value={patrulhaFilter} onValueChange={(v: PatrulhaFilterType) => setPatrulhaFilter(v)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semana">Semanal</SelectItem>
+                  <SelectItem value="mes">Mensal</SelectItem>
+                  <SelectItem value="ano">Anual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top 10 que MAIS patrulham */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-success">
+                <Trophy className="h-5 w-5" />
+                Mais Patrulham
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {patrulhaStats.top10.length > 0 ? (
+                <div className="space-y-2">
+                  {patrulhaStats.top10.map((item) => (
+                    <div 
+                      key={item.nome} 
+                      className="flex items-center justify-between p-3 bg-success/5 rounded-lg hover:bg-success/10 transition-colors cursor-pointer"
+                      onClick={() => handlePoliceClick(item.nome)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                          item.rank === 1 ? "bg-yellow-500 text-yellow-950" :
+                          item.rank === 2 ? "bg-gray-400 text-gray-950" :
+                          item.rank === 3 ? "bg-amber-600 text-amber-950" :
+                          "bg-success/10 text-success"
+                        }`}>
+                          {item.rank}
+                        </span>
+                        <span className="font-medium truncate">{item.nome}</span>
+                      </div>
+                      <span className="px-3 py-1 bg-success/10 text-success rounded-full font-bold text-sm shrink-0 ml-2 font-mono">
+                        {item.formatted}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">Nenhum dado disponível para o período</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top 10 que MENOS patrulham */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+                <TrendingDown className="h-5 w-5" />
+                Menos Patrulham
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {patrulhaStats.bottom10.length > 0 ? (
+                <div className="space-y-2">
+                  {patrulhaStats.bottom10.map((item) => (
+                    <div 
+                      key={item.nome} 
+                      className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg hover:bg-destructive/10 transition-colors cursor-pointer"
+                      onClick={() => handlePoliceClick(item.nome)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center text-sm font-bold text-destructive shrink-0">
+                          {item.rank}
+                        </span>
+                        <span className="font-medium truncate">{item.nome}</span>
+                      </div>
+                      <span className="px-3 py-1 bg-destructive/10 text-destructive rounded-full font-bold text-sm shrink-0 ml-2 font-mono">
+                        {item.formatted}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">Nenhum dado disponível para o período</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
