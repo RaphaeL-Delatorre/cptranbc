@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock, LogIn } from "lucide-react";
-import { useCreateAIT } from "@/hooks/useAITs";
+import { useCreateAIT, useMeusAITs } from "@/hooks/useAITs";
 import { useAuth } from "@/hooks/useAuth";
 import { patentes, artigos, providencias, prefixosViaturas } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,9 +55,11 @@ const AIT = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(initialFormData);
   const [uploading, setUploading] = useState(false);
+  const [showMeusAITs, setShowMeusAITs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, loading: authLoading } = useAuth();
   const createAIT = useCreateAIT();
+  const { data: meusAITs = [], isLoading: meusAITsLoading } = useMeusAITs();
   const totalSteps = 5;
 
   // If not logged in, show login prompt
@@ -284,6 +286,88 @@ const AIT = () => {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pendente":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Pendente</span>;
+      case "aprovado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-success/20 text-success">Aprovado</span>;
+      case "recusado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">Recusado</span>;
+      default:
+        return null;
+    }
+  };
+
+  // Meus AITs view
+  if (showMeusAITs) {
+    return (
+      <MainLayout>
+        <section className="py-16 md:py-24 min-h-screen">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="font-display text-3xl font-bold mb-2">Meus AITs</h1>
+                <p className="text-muted-foreground">Histórico de Autos de Infração de Trânsito</p>
+              </div>
+              <Button variant="outline" onClick={() => setShowMeusAITs(false)} className="gap-2">
+                <ChevronLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+            </div>
+
+            <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+              {meusAITsLoading ? (
+                <div className="p-8 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : meusAITs.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Você ainda não tem AITs registrados.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-4 font-semibold text-sm">Nº AIT</th>
+                        <th className="text-left p-4 font-semibold text-sm">Data</th>
+                        <th className="text-left p-4 font-semibold text-sm">Condutor</th>
+                        <th className="text-left p-4 font-semibold text-sm">Veículo</th>
+                        <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {meusAITs.map((ait) => (
+                        <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-4 font-mono font-semibold">#{ait.numero_ait}</td>
+                          <td className="p-4">{new Date(ait.created_at).toLocaleDateString('pt-BR')}</td>
+                          <td className="p-4">{ait.nome_condutor || "-"}</td>
+                          <td className="p-4">{ait.marca_modelo} ({ait.emplacamento})</td>
+                          <td className="p-4">
+                            <div className="flex flex-col gap-1">
+                              {getStatusBadge(ait.status)}
+                              {ait.status === "recusado" && ait.motivo_recusa && (
+                                <p className="text-xs text-destructive mt-1">
+                                  <strong>Motivo:</strong> {ait.motivo_recusa}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      </MainLayout>
+    );
+  }
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -301,7 +385,7 @@ const AIT = () => {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => navigate("/dashboard")} 
+                onClick={() => setShowMeusAITs(true)} 
                 className="gap-2"
               >
                 <FileText className="h-4 w-4" />

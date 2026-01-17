@@ -48,6 +48,25 @@ export const useAITs = () => {
   });
 };
 
+export const useMeusAITs = () => {
+  return useQuery({
+    queryKey: ["meus-aits"],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("aits")
+        .select("*")
+        .eq("agente_id", user.user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as AIT[];
+    },
+  });
+};
+
 export const useAITStats = () => {
   return useQuery({
     queryKey: ["ait-stats"],
