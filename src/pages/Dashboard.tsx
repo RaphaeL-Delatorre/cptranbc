@@ -877,7 +877,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <img src={logoTransito} alt="Logo" className="h-10 w-10 object-contain" />
             <div>
-              <h1 className="font-display text-lg font-bold text-sidebar-foreground">TRÂNSITO</h1>
+              <h1 className="font-display text-lg font-bold text-sidebar-foreground">CPTran</h1>
               <p className="text-xs text-sidebar-foreground/60">Dashboard</p>
             </div>
           </div>
