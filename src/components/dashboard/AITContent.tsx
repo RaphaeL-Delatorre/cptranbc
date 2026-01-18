@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ListPagination } from "@/components/common/ListPagination";
 import { useToast } from "@/hooks/use-toast";
 import {
   useAITs,
@@ -20,6 +21,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
+import { exportAITsToCSV } from "@/utils/aitExport";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertCircle,
@@ -37,6 +39,13 @@ import {
   XCircle,
   Camera,
 } from "lucide-react";
+
+type AITTabType = "pendentes" | "aprovados" | "recusados";
+type SortBy = "created_at" | "data_ait" | "nome_agente";
+type SortDir = "desc" | "asc";
+
+type PerPage = 10 | 25 | 50 | 100;
+
 
 type AITTabType = "pendentes" | "aprovados" | "recusados";
 type SortBy = "created_at" | "data_ait" | "nome_agente";
@@ -86,6 +95,12 @@ export const AITContent = () => {
   const [sortBy, setSortBy] = useState<SortBy>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [viaturaFilter, setViaturaFilter] = useState<string>("all");
+
+  // Pagination
+  const [page, setPage] = useState<number>(1);
+  const [perPage, setPerPage] = useState<PerPage>(10);
+
 
   const userRole =
     userRoles.find((r) => r.role === "admin")?.role === "admin"
@@ -102,6 +117,14 @@ export const AITContent = () => {
     return { total, pendentes, aprovados, recusados };
   }, [aits]);
 
+  const viaturaOptions = useMemo(() => {
+    const values = new Set<string>();
+    aits.forEach((a) => {
+      if (a.viatura) values.add(a.viatura);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b));
+  }, [aits]);
+
   const baseFiltered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const hasStart = Boolean(dateStart);
@@ -110,6 +133,9 @@ export const AITContent = () => {
     const endDate = hasEnd ? parseDateOnly(dateEnd) : null;
 
     return aits.filter((ait) => {
+      // Quick filter (viatura/prefixo)
+      if (viaturaFilter !== "all" && ait.viatura !== viaturaFilter) return false;
+
       // Date filter (by "data do AIT" when exists)
       if (startDate || endDate) {
         const aitDate = new Date(getAITDateISO(ait));
@@ -138,7 +164,8 @@ export const AITContent = () => {
 
       return haystack.includes(term);
     });
-  }, [aits, dateEnd, dateStart, searchTerm]);
+  }, [aits, dateEnd, dateStart, searchTerm, viaturaFilter]);
+
 
   const filteredCounts = useMemo(() => {
     return {
@@ -175,6 +202,17 @@ export const AITContent = () => {
     return sorted;
   }, [activeTab, baseFiltered, sortBy, sortDir]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, dateStart, dateEnd, sortBy, sortDir, searchTerm, viaturaFilter, perPage]);
+
+  const paginatedAITs = useMemo(() => {
+    const start = (page - 1) * perPage;
+    const end = start + perPage;
+    return filteredAITs.slice(start, end);
+  }, [filteredAITs, page, perPage]);
+
+
   const handleApproveAIT = async (id: string) => {
     try {
       await updateAITStatus.mutateAsync({ id, status: "aprovado" });
@@ -209,6 +247,8 @@ export const AITContent = () => {
     setSortBy("created_at");
     setSortDir("desc");
     setSearchTerm("");
+    setViaturaFilter("all");
+    setPage(1);
   };
 
   const getStatusBadge = (status: AIT["status"]) => {
@@ -303,6 +343,15 @@ export const AITContent = () => {
             <Download className="h-4 w-4" />
             Exportar PDF
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => exportAITsToCSV(filteredAITs, `aits-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`)}
+            className="gap-2"
+            disabled={filteredAITs.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
         </div>
       </div>
 
@@ -367,7 +416,7 @@ export const AITContent = () => {
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="text-sm font-medium text-foreground">Data de Início</label>
               <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
@@ -375,6 +424,23 @@ export const AITContent = () => {
             <div>
               <label className="text-sm font-medium text-foreground">Data de Fim</label>
               <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground">Viatura/Prefixo</label>
+              <Select value={viaturaFilter} onValueChange={setViaturaFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {viaturaOptions.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -750,7 +816,7 @@ export const AITContent = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {filteredAITs.map((ait) => (
+                {paginatedAITs.map((ait) => (
                   <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
                     <td className="p-4 font-medium whitespace-nowrap">#{ait.numero_ait}</td>
                     <td className="p-4 text-muted-foreground whitespace-nowrap">
@@ -781,30 +847,6 @@ export const AITContent = () => {
                         <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)} title="Exportar PDF">
                           <Download className="h-4 w-4" />
                         </Button>
-                        {activeTab === "pendentes" && (
-                          <>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-success hover:text-success"
-                              onClick={() => handleApproveAIT(ait.id)}
-                              disabled={updateAITStatus.isPending}
-                              title="Aprovar"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => setShowRejectModal(ait.id)}
-                              disabled={updateAITStatus.isPending}
-                              title="Reprovar"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
                         {userRole === "admin" && (
                           <Button
                             size="icon"
@@ -815,8 +857,12 @@ export const AITContent = () => {
                                 try {
                                   await deleteAIT.mutateAsync(ait.id);
                                   toast({ title: "AIT deletado" });
-                                } catch {
-                                  toast({ title: "Erro", variant: "destructive" });
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Erro",
+                                    description: error?.message || "Erro ao deletar AIT.",
+                                    variant: "destructive",
+                                  });
                                 }
                               }
                             }}
@@ -829,11 +875,24 @@ export const AITContent = () => {
                     </td>
                   </tr>
                 ))}
+
               </tbody>
             </table>
           </div>
         )}
-      </div>
+
+        {!aitsLoading && filteredAITs.length > 0 && (
+          <ListPagination
+            page={page}
+            perPage={perPage}
+            totalItems={filteredAITs.length}
+            onPageChange={setPage}
+            onPerPageChange={(v) => {
+              setPerPage(v);
+              setPage(1);
+            }}
+          />
+        )}
     </div>
   );
 };
