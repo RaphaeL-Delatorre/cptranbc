@@ -21,7 +21,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
-import { exportAITsToCSV } from "@/utils/aitExport";
+import { exportAITsToCSV, exportAITsToExcel } from "@/utils/aitExport";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertCircle,
@@ -340,12 +340,31 @@ export const AITContent = () => {
           </Button>
           <Button
             variant="outline"
-            onClick={() => exportAITsToCSV(filteredAITs, `aits-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`)}
+            onClick={() =>
+              exportAITsToCSV(
+                filteredAITs,
+                `aits-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`
+              )
+            }
             className="gap-2"
             disabled={filteredAITs.length === 0}
           >
             <Download className="h-4 w-4" />
             Exportar CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              exportAITsToExcel(
+                filteredAITs,
+                `aits-${activeTab}-${new Date().toISOString().slice(0, 10)}.xlsx`
+              )
+            }
+            className="gap-2"
+            disabled={filteredAITs.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Exportar Excel
           </Button>
         </div>
       </div>

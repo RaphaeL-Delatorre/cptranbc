@@ -344,6 +344,25 @@ export const useDeletePonto = () => {
   });
 };
 
+export const useDeleteAllPontos = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("pontos_eletronicos")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
+      queryClient.invalidateQueries({ queryKey: ["meus-pontos"] });
+    },
+  });
+};
+
 // Helper function to format seconds to HH:MM:SS
 export const formatDuration = (seconds: number): string => {
   const hrs = Math.floor(seconds / 3600);

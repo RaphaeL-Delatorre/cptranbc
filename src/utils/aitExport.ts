@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import type { AIT } from "@/hooks/useAITs";
 import { downloadCSV } from "@/utils/csv";
 
@@ -7,7 +8,7 @@ const statusLabel: Record<AIT["status"], string> = {
   recusado: "Reprovado",
 };
 
-export const exportAITsToCSV = (aits: AIT[], fileName = "aits.csv") => {
+const toRows = (aits: AIT[]) => {
   const header = [
     "Nº AIT",
     "Status",
@@ -40,5 +41,18 @@ export const exportAITsToCSV = (aits: AIT[], fileName = "aits.csv") => {
     a.motivo_recusa ?? "",
   ]);
 
+  return { header, rows };
+};
+
+export const exportAITsToCSV = (aits: AIT[], fileName = "aits.csv") => {
+  const { header, rows } = toRows(aits);
   downloadCSV(fileName, [header, ...rows], ";");
+};
+
+export const exportAITsToExcel = (aits: AIT[], fileName = "aits.xlsx") => {
+  const { header, rows } = toRows(aits);
+  const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet, "AITs");
+  XLSX.writeFile(wb, fileName);
 };
