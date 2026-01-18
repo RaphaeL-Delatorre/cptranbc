@@ -758,6 +758,10 @@ export const AITContent = () => {
                             alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            onError={(e) => {
+                              // Fallback visual caso a URL venha inválida
+                              e.currentTarget.src = "/placeholder.svg";
+                            }}
                           />
                         </a>
                       );
@@ -812,46 +816,31 @@ export const AITContent = () => {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">AIT</th>
                   <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Data</th>
-                  <th className="text-left p-4 font-semibold text-sm">Policial</th>
-                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Viatura/Prefixo</th>
-                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Placa</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Graduação</th>
+                  <th className="text-left p-4 font-semibold text-sm">Nome</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Prefixo</th>
                   <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Status</th>
                   {activeTab !== "pendentes" && (
-                    <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">
-                      {activeTab === "aprovados" ? "Aprovado por" : "Reprovado por"}
-                    </th>
+                    <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Responsável</th>
                   )}
-                  {activeTab === "recusados" && (
-                    <th className="text-left p-4 font-semibold text-sm">Motivo</th>
-                  )}
-                  <th className="text-right p-4 font-semibold text-sm whitespace-nowrap">Ações</th>
+                  <th className="text-right p-4 font-semibold text-sm whitespace-nowrap">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {paginatedAITs.map((ait) => (
                   <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4 font-medium whitespace-nowrap">#{ait.numero_ait}</td>
                     <td className="p-4 text-muted-foreground whitespace-nowrap">
-                      {new Date(getAITDateISO(ait)).toLocaleDateString("pt-BR")}
+                      {new Date(ait.created_at).toLocaleString("pt-BR")}
                     </td>
+                    <td className="p-4 whitespace-nowrap">{ait.graduacao}</td>
                     <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{ait.nome_agente}</span>
-                        <span className="text-xs text-muted-foreground">{ait.graduacao}</span>
-                      </div>
+                      <span className="font-medium">{ait.nome_agente}</span>
                     </td>
                     <td className="p-4 whitespace-nowrap">{ait.viatura}</td>
-                    <td className="p-4 font-mono whitespace-nowrap">{ait.emplacamento}</td>
                     <td className="p-4 whitespace-nowrap">{getStatusBadge(ait.status)}</td>
                     {activeTab !== "pendentes" && (
                       <td className="p-4 text-sm whitespace-nowrap">{ait.aprovador_nome || "-"}</td>
-                    )}
-                    {activeTab === "recusados" && (
-                      <td className="p-4 max-w-[360px]">
-                        <span className="text-sm text-muted-foreground line-clamp-2">{ait.motivo_recusa || "-"}</span>
-                      </td>
                     )}
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end">
