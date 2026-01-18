@@ -1,31 +1,70 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAITs, useUpdateAITStatus, useDeleteAllAITs, useDeleteAIT, type AIT } from "@/hooks/useAITs";
+import {
+  useAITs,
+  useDeleteAIT,
+  useDeleteAllAITs,
+  type AIT,
+  useUpdateAITStatus,
+} from "@/hooks/useAITs";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  FileText,
-  Check,
-  X,
-  Eye,
-  Search,
-  Loader2,
-  Download,
-  Trash2,
-  Camera,
-  Clock,
-  CheckCircle,
-  XCircle,
   AlertCircle,
+  Calendar,
+  Check,
+  CheckCircle,
+  Download,
+  Eye,
+  FileText,
+  Loader2,
+  Search,
+  Trash2,
   User,
+  X,
+  XCircle,
+  Camera,
 } from "lucide-react";
 
 type AITTabType = "pendentes" | "aprovados" | "recusados";
+type SortBy = "created_at" | "data_ait" | "nome_agente";
+type SortDir = "desc" | "asc";
+
+const statusLabel: Record<AIT["status"], string> = {
+  pendente: "Pendente",
+  aprovado: "Aprovado",
+  recusado: "Reprovado",
+};
+
+const toDateOnlyValue = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const getAITDateISO = (ait: AIT) => {
+  // Prefer the AIT period start ("Data do AIT"), fallback to creation
+  return (ait.data_inicio || ait.created_at) as string;
+};
+
+const parseDateOnly = (value: string) => {
+  // value is yyyy-mm-dd
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
+};
 
 export const AITContent = () => {
   const { toast } = useToast();
@@ -38,93 +77,212 @@ export const AITContent = () => {
 
   const [activeTab, setActiveTab] = useState<AITTabType>("pendentes");
   const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  const userRole = userRoles.find(r => r.role === "admin") ? "admin" : 
-                   userRoles.find(r => r.role === "moderador") ? "moderador" : null;
+  // Filters
+  const [dateStart, setDateStart] = useState<string>("");
+  const [dateEnd, setDateEnd] = useState<string>("");
+  const [sortBy, setSortBy] = useState<SortBy>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
-  const getFilteredAITs = (status: AITTabType) => {
+  const userRole =
+    userRoles.find((r) => r.role === "admin")?.role === "admin"
+      ? "admin"
+      : userRoles.find((r) => r.role === "moderador")?.role === "moderador"
+        ? "moderador"
+        : null;
+
+  const totals = useMemo(() => {
+    const total = aits.length;
+    const pendentes = aits.filter((a) => a.status === "pendente").length;
+    const aprovados = aits.filter((a) => a.status === "aprovado").length;
+    const recusados = aits.filter((a) => a.status === "recusado").length;
+    return { total, pendentes, aprovados, recusados };
+  }, [aits]);
+
+  const baseFiltered = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const hasStart = Boolean(dateStart);
+    const hasEnd = Boolean(dateEnd);
+    const startDate = hasStart ? parseDateOnly(dateStart) : null;
+    const endDate = hasEnd ? parseDateOnly(dateEnd) : null;
+
     return aits.filter((ait) => {
-      if (ait.status !== status.slice(0, -1)) return false; // Remove 's' from 'pendentes' -> 'pendente'
-      
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        ait.nome_agente.toLowerCase().includes(term) ||
-        ait.nome_condutor.toLowerCase().includes(term) ||
-        ait.emplacamento.toLowerCase().includes(term) ||
-        ait.numero_ait.toString().includes(term)
-      );
-    });
-  };
+      // Date filter (by "data do AIT" when exists)
+      if (startDate || endDate) {
+        const aitDate = new Date(getAITDateISO(ait));
+        const aitDateOnly = parseDateOnly(toDateOnlyValue(aitDate));
 
-  const filteredAITs = getFilteredAITs(activeTab);
+        if (startDate && aitDateOnly < startDate) return false;
+        if (endDate && aitDateOnly > endDate) return false;
+      }
+
+      // Search filter (nome, prefixo/viatura, placa, etc.)
+      if (!term) return true;
+      const haystack = [
+        ait.nome_agente,
+        ait.graduacao,
+        ait.viatura,
+        ait.primeiro_homem,
+        ait.segundo_homem || "",
+        ait.terceiro_homem || "",
+        ait.nome_condutor,
+        ait.emplacamento,
+        ait.marca_modelo,
+        String(ait.numero_ait),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(term);
+    });
+  }, [aits, dateEnd, dateStart, searchTerm]);
+
+  const filteredCounts = useMemo(() => {
+    return {
+      pendentes: baseFiltered.filter((a) => a.status === "pendente").length,
+      aprovados: baseFiltered.filter((a) => a.status === "aprovado").length,
+      recusados: baseFiltered.filter((a) => a.status === "recusado").length,
+    };
+  }, [baseFiltered]);
+
+  const filteredAITs = useMemo(() => {
+    const status = activeTab.slice(0, -1) as AIT["status"]; // pendentes -> pendente
+
+    const sorted = baseFiltered
+      .filter((ait) => ait.status === status)
+      .sort((a, b) => {
+        const dir = sortDir === "asc" ? 1 : -1;
+
+        if (sortBy === "nome_agente") {
+          return a.nome_agente.localeCompare(b.nome_agente) * dir;
+        }
+
+        if (sortBy === "data_ait") {
+          const ad = new Date(getAITDateISO(a)).getTime();
+          const bd = new Date(getAITDateISO(b)).getTime();
+          return (ad - bd) * dir;
+        }
+
+        // created_at
+        const ac = new Date(a.created_at).getTime();
+        const bc = new Date(b.created_at).getTime();
+        return (ac - bc) * dir;
+      });
+
+    return sorted;
+  }, [activeTab, baseFiltered, sortBy, sortDir]);
 
   const handleApproveAIT = async (id: string) => {
     try {
       await updateAITStatus.mutateAsync({ id, status: "aprovado" });
-      toast({ title: "AIT Aprovado", description: `AIT foi aprovado com sucesso.` });
-    } catch (error) {
+      toast({ title: "AIT aprovado", description: "AIT foi aprovado com sucesso." });
+    } catch {
       toast({ title: "Erro", description: "Erro ao aprovar AIT.", variant: "destructive" });
     }
   };
 
   const handleRejectAIT = async (id: string) => {
     try {
-      await updateAITStatus.mutateAsync({ id, status: "recusado", motivo_recusa: rejectReason });
-      toast({ title: "AIT Recusado", description: `AIT foi recusado.`, variant: "destructive" });
+      await updateAITStatus.mutateAsync({
+        id,
+        status: "recusado",
+        motivo_recusa: rejectReason,
+      });
+      toast({
+        title: "AIT reprovado",
+        description: "AIT foi reprovado.",
+        variant: "destructive",
+      });
       setShowRejectModal(null);
       setRejectReason("");
-    } catch (error) {
-      toast({ title: "Erro", description: "Erro ao recusar AIT.", variant: "destructive" });
+    } catch {
+      toast({ title: "Erro", description: "Erro ao reprovar AIT.", variant: "destructive" });
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pendente":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Pendente</span>;
-      case "aprovado":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-success/20 text-success">Aprovado</span>;
-      case "recusado":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">Recusado</span>;
-      default:
-        return null;
+  const clearFilters = () => {
+    setDateStart("");
+    setDateEnd("");
+    setSortBy("created_at");
+    setSortDir("desc");
+    setSearchTerm("");
+  };
+
+  const getStatusBadge = (status: AIT["status"]) => {
+    if (status === "pendente") {
+      return (
+        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-primary/15 text-primary">
+          {statusLabel[status]}
+        </span>
+      );
     }
+
+    if (status === "aprovado") {
+      return (
+        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-success/15 text-success">
+          {statusLabel[status]}
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-destructive/15 text-destructive">
+        {statusLabel[status]}
+      </span>
+    );
   };
 
   const tabs = [
-    { id: "pendentes" as AITTabType, label: "Pendentes", icon: AlertCircle, count: aits.filter(a => a.status === "pendente").length },
-    { id: "aprovados" as AITTabType, label: "Aprovados", icon: CheckCircle, count: aits.filter(a => a.status === "aprovado").length },
-    { id: "recusados" as AITTabType, label: "Recusados", icon: XCircle, count: aits.filter(a => a.status === "recusado").length },
+    {
+      id: "pendentes" as AITTabType,
+      label: "Pendentes",
+      icon: AlertCircle,
+      count: filteredCounts.pendentes,
+    },
+    {
+      id: "aprovados" as AITTabType,
+      label: "Aprovados",
+      icon: CheckCircle,
+      count: filteredCounts.aprovados,
+    },
+    {
+      id: "recusados" as AITTabType,
+      label: "Reprovados",
+      icon: XCircle,
+      count: filteredCounts.recusados,
+    },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="font-display text-2xl font-bold">Gerenciar AITs</h2>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-display text-2xl font-bold">Dashboard de AITs</h2>
+          <p className="text-sm text-muted-foreground">Gerencie, filtre e acompanhe os AITs por status.</p>
+        </div>
         <div className="flex gap-2 items-center flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar AIT..." 
-              className="pl-9 w-48" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
           {userRole === "admin" && (
             <Button
               variant="destructive"
               onClick={async () => {
-                if (confirm("Tem certeza que deseja DELETAR TODOS os AITs? Esta ação não pode ser desfeita.")) {
+                if (
+                  confirm(
+                    "Tem certeza que deseja DELETAR TODOS os AITs? Esta ação não pode ser desfeita."
+                  )
+                ) {
                   try {
                     await deleteAllAITs.mutateAsync();
-                    toast({ title: "AITs Deletados", description: "Todos os AITs foram removidos." });
+                    toast({ title: "AITs deletados", description: "Todos os AITs foram removidos." });
                   } catch (error: any) {
-                    toast({ title: "Erro", description: error.message || "Erro ao deletar AITs.", variant: "destructive" });
+                    toast({
+                      title: "Erro",
+                      description: error?.message || "Erro ao deletar AITs.",
+                      variant: "destructive",
+                    });
                   }
                 }
               }}
@@ -133,11 +291,11 @@ export const AITContent = () => {
             >
               {deleteAllAITs.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               <Trash2 className="h-4 w-4" />
-              Deletar AITs
+              Deletar todos
             </Button>
           )}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => exportAllAITsToPDF(filteredAITs)}
             className="gap-2"
             disabled={filteredAITs.length === 0}
@@ -145,6 +303,122 @@ export const AITContent = () => {
             <Download className="h-4 w-4" />
             Exportar PDF
           </Button>
+        </div>
+      </div>
+
+      {/* Top stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
+              <FileText className="h-6 w-6 text-secondary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{totals.total}</p>
+              <p className="text-sm text-muted-foreground">Total de AITs</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <AlertCircle className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{totals.pendentes}</p>
+              <p className="text-sm text-muted-foreground">Pendentes</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+              <CheckCircle className="h-6 w-6 text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{totals.aprovados}</p>
+              <p className="text-sm text-muted-foreground">Aprovados</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <XCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{totals.recusados}</p>
+              <p className="text-sm text-muted-foreground">Reprovados</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-card rounded-xl shadow-card border border-border/50">
+        <div className="p-6 border-b border-border/50">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-display text-lg font-bold">Filtros</h3>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium text-foreground">Data de Início</label>
+              <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Data de Fim</label>
+              <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground">Ordenar por</label>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Data de Criação</SelectItem>
+                  <SelectItem value="data_ait">Data do AIT</SelectItem>
+                  <SelectItem value="nome_agente">Nome do Policial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground">Ordem</label>
+              <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Mais Recente</SelectItem>
+                  <SelectItem value="asc">Mais Antigo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, prefixo ou viatura..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button variant="outline" onClick={clearFilters}>
+              Limpar filtros
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -170,12 +444,12 @@ export const AITContent = () => {
       {showRejectModal && (
         <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-2xl p-6 max-w-md w-full">
-            <h3 className="font-display text-xl font-bold mb-4">Recusar AIT</h3>
-            <p className="text-muted-foreground mb-4">Informe o motivo da recusa:</p>
+            <h3 className="font-display text-xl font-bold mb-2">Reprovar AIT</h3>
+            <p className="text-muted-foreground mb-4">Informe o motivo da reprovação:</p>
             <Textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Motivo da recusa..."
+              placeholder="Motivo da reprovação..."
               className="mb-4"
               rows={4}
             />
@@ -188,9 +462,15 @@ export const AITContent = () => {
               >
                 {updateAITStatus.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 <X className="h-4 w-4" />
-                Confirmar Recusa
+                Confirmar
               </Button>
-              <Button variant="outline" onClick={() => { setShowRejectModal(null); setRejectReason(""); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectModal(null);
+                  setRejectReason("");
+                }}
+              >
                 Cancelar
               </Button>
             </div>
@@ -198,7 +478,7 @@ export const AITContent = () => {
         </div>
       )}
 
-      {/* AIT Detail Modal */}
+      {/* AIT Detail Modal (kept) */}
       {selectedAIT && (
         <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -206,12 +486,17 @@ export const AITContent = () => {
               <div>
                 <h3 className="font-display text-2xl font-bold">AIT #{selectedAIT.numero_ait}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Criado em {new Date(selectedAIT.created_at).toLocaleDateString('pt-BR')}
+                  Criado em {new Date(selectedAIT.created_at).toLocaleDateString("pt-BR")}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 {getStatusBadge(selectedAIT.status)}
-                <Button size="icon" variant="outline" onClick={() => exportAITToPDF(selectedAIT)} title="Exportar PDF">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => exportAITToPDF(selectedAIT)}
+                  title="Exportar PDF"
+                >
                   <Download className="h-5 w-5" />
                 </Button>
                 <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(null)}>
@@ -219,7 +504,7 @@ export const AITContent = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               {/* Policial Responsável */}
               <div className="bg-muted/30 rounded-xl p-5 space-y-4">
@@ -301,7 +586,10 @@ export const AITContent = () => {
                     <p className="text-sm text-muted-foreground mb-2">Artigos Infringidos</p>
                     <div className="flex flex-wrap gap-2">
                       {selectedAIT.artigos_infringidos?.map((art) => (
-                        <span key={art} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                        <span
+                          key={art}
+                          className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium"
+                        >
                           {art}
                         </span>
                       ))}
@@ -311,7 +599,10 @@ export const AITContent = () => {
                     <p className="text-sm text-muted-foreground mb-2">Providências</p>
                     <div className="flex flex-wrap gap-2">
                       {selectedAIT.providencias_tomadas?.map((prov) => (
-                        <span key={prov} className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium">
+                        <span
+                          key={prov}
+                          className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium"
+                        >
                           {prov}
                         </span>
                       ))}
@@ -320,17 +611,25 @@ export const AITContent = () => {
                 </div>
               </div>
 
-              {/* Aprovador/Motivo Recusa */}
+              {/* Aprovação / Reprovação */}
               {(selectedAIT.aprovador_nome || selectedAIT.motivo_recusa) && (
-                <div className={`rounded-xl p-5 space-y-4 ${selectedAIT.status === 'recusado' ? 'bg-destructive/10' : 'bg-success/10'}`}>
-                  <h4 className={`font-semibold text-lg ${selectedAIT.status === 'recusado' ? 'text-destructive' : 'text-success'}`}>
-                    {selectedAIT.status === 'aprovado' ? 'Aprovação' : 'Recusa'}
+                <div
+                  className={`rounded-xl p-5 space-y-4 ${
+                    selectedAIT.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
+                  }`}
+                >
+                  <h4
+                    className={`font-semibold text-lg ${
+                      selectedAIT.status === "recusado" ? "text-destructive" : "text-success"
+                    }`}
+                  >
+                    {selectedAIT.status === "aprovado" ? "Aprovação" : "Reprovação"}
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {selectedAIT.aprovador_nome && (
                       <div>
                         <p className="text-sm text-muted-foreground">
-                          {selectedAIT.status === 'aprovado' ? 'Aprovado por' : 'Recusado por'}
+                          {selectedAIT.status === "aprovado" ? "Aprovado por" : "Reprovado por"}
                         </p>
                         <p className="font-semibold">{selectedAIT.aprovador_nome}</p>
                       </div>
@@ -339,14 +638,14 @@ export const AITContent = () => {
                       <div>
                         <p className="text-sm text-muted-foreground">Data</p>
                         <p className="font-semibold">
-                          {new Date(selectedAIT.data_aprovacao).toLocaleDateString('pt-BR')}
+                          {new Date(selectedAIT.data_aprovacao).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                     )}
                   </div>
                   {selectedAIT.motivo_recusa && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Motivo da Recusa</p>
+                      <p className="text-sm text-muted-foreground mb-1">Motivo</p>
                       <p className="bg-background/50 p-3 rounded-lg">{selectedAIT.motivo_recusa}</p>
                     </div>
                   )}
@@ -362,13 +661,24 @@ export const AITContent = () => {
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {selectedAIT.imagens.map((imgPath, idx) => {
-                      const imageUrl = imgPath.startsWith('http') 
-                        ? imgPath 
-                        : supabase.storage.from('ait-images').getPublicUrl(imgPath).data.publicUrl;
-                      
+                      const imageUrl = imgPath.startsWith("http")
+                        ? imgPath
+                        : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
+
                       return (
-                        <a key={idx} href={imageUrl} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden border">
-                          <img src={imageUrl} alt={`Imagem ${idx + 1}`} className="w-full h-full object-cover" />
+                        <a
+                          key={idx}
+                          href={imageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="aspect-square rounded-lg overflow-hidden border"
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
                         </a>
                       );
                     })}
@@ -379,21 +689,27 @@ export const AITContent = () => {
 
             {selectedAIT.status === "pendente" && (
               <div className="flex gap-2 mt-6 pt-4 border-t border-border/50">
-                <Button 
+                <Button
                   className="gap-2 bg-success hover:bg-success/90"
-                  onClick={() => { handleApproveAIT(selectedAIT.id); setSelectedAIT(null); }}
+                  onClick={() => {
+                    handleApproveAIT(selectedAIT.id);
+                    setSelectedAIT(null);
+                  }}
                   disabled={updateAITStatus.isPending}
                 >
                   <Check className="h-4 w-4" />
                   Aprovar
                 </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => { setShowRejectModal(selectedAIT.id); setSelectedAIT(null); }} 
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setShowRejectModal(selectedAIT.id);
+                    setSelectedAIT(null);
+                  }}
                   className="gap-2"
                 >
                   <X className="h-4 w-4" />
-                  Recusar
+                  Reprovar
                 </Button>
               </div>
             )}
@@ -401,102 +717,110 @@ export const AITContent = () => {
         </div>
       )}
 
-      {/* AIT List */}
+      {/* List */}
       <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
         {aitsLoading ? (
-          <div className="p-8 text-center">
+          <div className="p-10 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
           </div>
         ) : filteredAITs.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            {searchTerm ? "Nenhum AIT encontrado." : `Nenhum AIT ${activeTab.slice(0, -1)} encontrado.`}
+          <div className="p-10 text-center text-muted-foreground">
+            {searchTerm || dateStart || dateEnd ? "Nenhum AIT encontrado com estes filtros." : "Nenhum AIT encontrado."}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-sm">ID</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">AIT</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Data</th>
                   <th className="text-left p-4 font-semibold text-sm">Policial</th>
-                  <th className="text-left p-4 font-semibold text-sm">Motorista</th>
-                  <th className="text-left p-4 font-semibold text-sm">Placa</th>
-                  <th className="text-left p-4 font-semibold text-sm">Data</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Viatura/Prefixo</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Placa</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Status</th>
+                  {activeTab !== "pendentes" && (
+                    <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">
+                      {activeTab === "aprovados" ? "Aprovado por" : "Reprovado por"}
+                    </th>
+                  )}
                   {activeTab === "recusados" && (
                     <th className="text-left p-4 font-semibold text-sm">Motivo</th>
                   )}
-                  {activeTab !== "pendentes" && (
-                    <th className="text-left p-4 font-semibold text-sm">
-                      {activeTab === "aprovados" ? "Aprovado por" : "Recusado por"}
-                    </th>
-                  )}
-                  <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                  <th className="text-right p-4 font-semibold text-sm whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {filteredAITs.map((ait) => (
                   <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4 font-medium">#{ait.numero_ait}</td>
-                    <td className="p-4">{ait.nome_agente}</td>
-                    <td className="p-4">{ait.nome_condutor}</td>
-                    <td className="p-4 font-mono">{ait.emplacamento}</td>
-                    <td className="p-4 text-muted-foreground">
-                      {new Date(ait.created_at).toLocaleDateString('pt-BR')}
+                    <td className="p-4 font-medium whitespace-nowrap">#{ait.numero_ait}</td>
+                    <td className="p-4 text-muted-foreground whitespace-nowrap">
+                      {new Date(getAITDateISO(ait)).toLocaleDateString("pt-BR")}
                     </td>
-                    {activeTab === "recusados" && (
-                      <td className="p-4 max-w-[200px]">
-                        <span className="text-sm text-muted-foreground line-clamp-2">
-                          {ait.motivo_recusa || "-"}
-                        </span>
-                      </td>
-                    )}
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{ait.nome_agente}</span>
+                        <span className="text-xs text-muted-foreground">{ait.graduacao}</span>
+                      </div>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">{ait.viatura}</td>
+                    <td className="p-4 font-mono whitespace-nowrap">{ait.emplacamento}</td>
+                    <td className="p-4 whitespace-nowrap">{getStatusBadge(ait.status)}</td>
                     {activeTab !== "pendentes" && (
-                      <td className="p-4 text-sm">{ait.aprovador_nome || "-"}</td>
+                      <td className="p-4 text-sm whitespace-nowrap">{ait.aprovador_nome || "-"}</td>
+                    )}
+                    {activeTab === "recusados" && (
+                      <td className="p-4 max-w-[360px]">
+                        <span className="text-sm text-muted-foreground line-clamp-2">{ait.motivo_recusa || "-"}</span>
+                      </td>
                     )}
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
+                        <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)} title="Ver detalhes">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
+                        <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)} title="Exportar PDF">
                           <Download className="h-4 w-4" />
                         </Button>
                         {activeTab === "pendentes" && (
                           <>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               className="text-success hover:text-success"
                               onClick={() => handleApproveAIT(ait.id)}
                               disabled={updateAITStatus.isPending}
+                              title="Aprovar"
                             >
                               <Check className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               className="text-destructive hover:text-destructive"
                               onClick={() => setShowRejectModal(ait.id)}
                               disabled={updateAITStatus.isPending}
+                              title="Reprovar"
                             >
                               <X className="h-4 w-4" />
                             </Button>
                           </>
                         )}
                         {userRole === "admin" && (
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             className="text-destructive hover:text-destructive"
                             onClick={async () => {
                               if (confirm("Tem certeza que deseja deletar este AIT?")) {
                                 try {
                                   await deleteAIT.mutateAsync(ait.id);
-                                  toast({ title: "AIT Deletado" });
-                                } catch (error) {
+                                  toast({ title: "AIT deletado" });
+                                } catch {
                                   toast({ title: "Erro", variant: "destructive" });
                                 }
                               }
                             }}
+                            title="Deletar"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
