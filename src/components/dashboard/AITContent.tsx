@@ -46,11 +46,6 @@ type SortDir = "desc" | "asc";
 
 type PerPage = 10 | 25 | 50 | 100;
 
-
-type AITTabType = "pendentes" | "aprovados" | "recusados";
-type SortBy = "created_at" | "data_ait" | "nome_agente";
-type SortDir = "desc" | "asc";
-
 const statusLabel: Record<AIT["status"], string> = {
   pendente: "Pendente",
   aprovado: "Aprovado",
@@ -893,6 +888,7 @@ export const AITContent = () => {
             }}
           />
         )}
+      </div>
     </div>
   );
 };
