@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useHasPermission } from "@/hooks/usePermissions";
 import { exportPontosToCSV, exportPontosToExcel } from "@/utils/pontoExport";
+import { exportPontosToPDF } from "@/utils/pontoPdfExport";
 import {
   AlertCircle,
   Calendar,
@@ -37,6 +38,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+
 
 type TabType = "pendentes" | "aprovados" | "recusados";
 type SortBy = "created_at" | "data_inicio" | "nome_policial";
@@ -308,7 +310,26 @@ export const PontoEletronicoContent = () => {
 
           <Button
             variant="outline"
-            onClick={() => exportPontosToCSV(filteredPontos, `pontos-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`)}
+            onClick={() =>
+              exportPontosToPDF(
+                filteredPontos,
+                `pontos-${activeTab}-${new Date().toISOString().slice(0, 10)}.pdf`
+              )
+            }
+            className="gap-2"
+            disabled={filteredPontos.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Exportar PDF
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              exportPontosToCSV(
+                filteredPontos,
+                `pontos-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`
+              )
+            }
             className="gap-2"
             disabled={filteredPontos.length === 0}
           >
@@ -317,7 +338,12 @@ export const PontoEletronicoContent = () => {
           </Button>
           <Button
             variant="outline"
-            onClick={() => exportPontosToExcel(filteredPontos, `pontos-${activeTab}-${new Date().toISOString().slice(0, 10)}.xlsx`)}
+            onClick={() =>
+              exportPontosToExcel(
+                filteredPontos,
+                `pontos-${activeTab}-${new Date().toISOString().slice(0, 10)}.xlsx`
+              )
+            }
             className="gap-2"
             disabled={filteredPontos.length === 0}
           >
@@ -693,37 +719,31 @@ export const PontoEletronicoContent = () => {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-sm">Policial</th>
-                  <th className="text-left p-4 font-semibold text-sm">Função</th>
-                  <th className="text-left p-4 font-semibold text-sm">Viatura</th>
-                  <th className="text-left p-4 font-semibold text-sm">Data</th>
-                  <th className="text-left p-4 font-semibold text-sm">Duração</th>
-                  <th className="text-left p-4 font-semibold text-sm">Status</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Data</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Graduação</th>
+                  <th className="text-left p-4 font-semibold text-sm">Nome</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Prefixo</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Duração</th>
+                  <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">Status</th>
                   {activeTab !== "pendentes" && (
                     <th className="text-left p-4 font-semibold text-sm whitespace-nowrap">
-                      {activeTab === "aprovados" ? "Aprovado por" : "Recusado por"}
+                      Responsável
                     </th>
                   )}
-                  {activeTab === "recusados" && (
-                    <th className="text-left p-4 font-semibold text-sm">Motivo</th>
-                  )}
-                  <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                  <th className="text-right p-4 font-semibold text-sm whitespace-nowrap">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {paginatedPontos.map((ponto) => (
                   <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{ponto.nome_policial || "-"}</span>
-                        <span className="text-xs text-muted-foreground">{ponto.patente || "-"}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">{funcoesLabel[ponto.funcao]}</td>
-                    <td className="p-4 whitespace-nowrap">{ponto.viatura || "-"}</td>
                     <td className="p-4 text-muted-foreground whitespace-nowrap">
-                      {new Date(ponto.data_inicio).toLocaleDateString("pt-BR")}
+                      {new Date(ponto.created_at).toLocaleString("pt-BR")}
                     </td>
+                    <td className="p-4 whitespace-nowrap">{ponto.patente || "-"}</td>
+                    <td className="p-4">
+                      <span className="font-medium">{ponto.nome_policial || "-"}</span>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">{ponto.viatura || "-"}</td>
                     <td className="p-4 font-mono whitespace-nowrap">
                       {formatDuration(ponto.tempo_total_segundos || 0)}
                     </td>
@@ -731,16 +751,14 @@ export const PontoEletronicoContent = () => {
                     {activeTab !== "pendentes" && (
                       <td className="p-4 text-sm whitespace-nowrap">{ponto.aprovador_nome || "-"}</td>
                     )}
-                    {activeTab === "recusados" && (
-                      <td className="p-4 max-w-[360px]">
-                        <span className="text-sm text-muted-foreground line-clamp-2">
-                          {ponto.motivo_recusa || "-"}
-                        </span>
-                      </td>
-                    )}
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(ponto)} title="Ver detalhes">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setSelectedPonto(ponto)}
+                          title="Ver detalhes"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         {canManagePonto && (

@@ -35,8 +35,9 @@ const initialFormData = {
   imagensAutuacao: [] as File[],
   relatorio: "",
   dataOcorrencia: "",
+  horaOcorrencia: "",
   // Step 4 - Dados do Condutor/Proprietário
-  hasMotorista: true,
+  hasMotorista: false,
   hasProprietario: false,
   nomeCondutor: "",
   passaporteCondutor: "",
@@ -184,22 +185,32 @@ const AIT = () => {
         if (!formData.dataOcorrencia) return { valid: false, message: "Informe a data da ocorrência" };
         return { valid: true, message: "" };
       
-      case 4:
-        const hasCondutor = formData.hasMotorista && formData.nomeCondutor.trim() && formData.passaporteCondutor.trim();
-        const hasProprietario = formData.hasProprietario && formData.nomeProprietario.trim() && formData.passaporteProprietario.trim();
+      case 4: {
+        const hasCondutor =
+          formData.hasMotorista && formData.nomeCondutor.trim() && formData.passaporteCondutor.trim();
+        const hasProprietario =
+          formData.hasProprietario &&
+          formData.nomeProprietario.trim() &&
+          formData.passaporteProprietario.trim();
         const hasVeiculo = formData.emplacamento.trim() && formData.marcaModelo.trim();
-        
-        if (!hasVeiculo) return { valid: false, message: "Informe os dados do veículo (emplacamento e marca/modelo)" };
-        if (!hasCondutor && !hasProprietario) return { valid: false, message: "Informe os dados do motorista ou do proprietário" };
-        if (formData.hasMotorista && (!formData.nomeCondutor.trim() || !formData.passaporteCondutor.trim())) {
+
+        if (!hasVeiculo)
+          return {
+            valid: false,
+            message: "Informe os dados do veículo (emplacamento e marca/modelo)",
+          };
+
+        // Motorista/Proprietário NÃO são obrigatórios; só valida quando marcado
+        if (formData.hasMotorista && !hasCondutor) {
           return { valid: false, message: "Preencha os dados completos do motorista" };
         }
-        if (formData.hasProprietario && (!formData.nomeProprietario.trim() || !formData.passaporteProprietario.trim())) {
+        if (formData.hasProprietario && !hasProprietario) {
           return { valid: false, message: "Preencha os dados completos do proprietário" };
         }
-        
+
         return { valid: true, message: "" };
-      
+      }
+
       case 5:
         if (formData.artigosInfringidos.length === 0) return { valid: false, message: "Selecione pelo menos 1 artigo infringido" };
         if (formData.providenciasTomadas.length === 0) return { valid: false, message: "Selecione pelo menos 1 providência tomada" };
@@ -242,7 +253,9 @@ const AIT = () => {
 
       const imageUrls = await uploadImages();
 
-      const dataInicio = formData.dataOcorrencia ? `${formData.dataOcorrencia}T00:00:00` : undefined;
+      const dataInicio = formData.dataOcorrencia
+        ? `${formData.dataOcorrencia}T${(formData.horaOcorrencia || "00:00")}:00`
+        : undefined;
 
         await createAIT.mutateAsync({
           graduacao: formData.graduacao,
@@ -593,17 +606,26 @@ const AIT = () => {
             <div className="p-4 bg-primary/5 rounded-xl space-y-4 border-2 border-primary/20">
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
-                <h4 className="font-semibold text-base text-primary">Data da Ocorrência</h4>
+                <h4 className="font-semibold text-base text-primary">Data e Horário da Ocorrência</h4>
               </div>
-              
-              <div>
-                <Label>Data *</Label>
-                <Input 
-                  type="date" 
-                  value={formData.dataOcorrencia} 
-                  onChange={e => handleInputChange("dataOcorrencia", e.target.value)} 
-                  className="max-w-xs"
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+                <div>
+                  <Label>Data *</Label>
+                  <Input
+                    type="date"
+                    value={formData.dataOcorrencia}
+                    onChange={(e) => handleInputChange("dataOcorrencia", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Horário</Label>
+                  <Input
+                    type="time"
+                    value={formData.horaOcorrencia}
+                    onChange={(e) => handleInputChange("horaOcorrencia", e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
