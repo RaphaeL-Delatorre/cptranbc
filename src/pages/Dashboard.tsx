@@ -41,11 +41,12 @@ import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts"
 import { MyProfileContent } from "@/components/dashboard/MyProfileContent";
 import { PontoEletronicoContent } from "@/components/dashboard/PontoEletronicoContent";
 import { AITContent } from "@/components/dashboard/AITContent";
+import { SystemContent } from "@/components/dashboard/SystemContent";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock } from "lucide-react";
 
-type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "ait-estatisticas" | "ponto" | "usuarios" | "config";
+type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "ait-estatisticas" | "ponto" | "sistema" | "config";
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -972,15 +973,15 @@ const Dashboard = () => {
               <div className="space-y-1">
                 {userRole === "admin" && (
                   <button
-                    onClick={() => setActiveTab("usuarios")}
+                    onClick={() => setActiveTab("sistema")}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      activeTab === "usuarios"
+                      activeTab === "sistema"
                         ? "bg-sidebar-primary text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent"
                     }`}
                   >
                     <Shield className="h-5 w-5" />
-                    Usuários
+                    Sistema
                   </button>
                 )}
                 <button
