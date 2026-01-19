@@ -275,13 +275,13 @@ const BatePonto = () => {
                         <th className="text-left p-4 font-semibold text-sm">Função</th>
                         <th className="text-left p-4 font-semibold text-sm">Viatura</th>
                         <th className="text-left p-4 font-semibold text-sm">Duração</th>
-                        <th className="text-left p-4 font-semibold text-sm">Status</th>
+                        <th className="text-left p-4 font-semibold text-sm">Situação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
                       {finishedPontos.map((ponto) => (
                         <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="p-4">{new Date(ponto.data_inicio).toLocaleDateString('pt-BR')}</td>
+                          <td className="p-4">{new Date(ponto.created_at).toLocaleString("pt-BR")}</td>
                           <td className="p-4">{funcoesViatura.find(f => f.value === ponto.funcao)?.label || ponto.funcao}</td>
                           <td className="p-4">{ponto.viatura || "-"}</td>
                           <td className="p-4 font-mono">{formatDuration(ponto.tempo_total_segundos || 0)}</td>

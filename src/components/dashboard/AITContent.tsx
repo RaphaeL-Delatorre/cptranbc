@@ -566,7 +566,7 @@ export const AITContent = () => {
               <div>
                 <h3 className="font-display text-2xl font-bold">AIT #{selectedAIT.numero_ait}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Criado em {new Date(selectedAIT.created_at).toLocaleDateString("pt-BR")}
+                  Criado em {new Date(selectedAIT.created_at).toLocaleString("pt-BR")}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -732,43 +732,70 @@ export const AITContent = () => {
                 </div>
               )}
 
-              {/* Imagens */}
-              {selectedAIT.imagens && selectedAIT.imagens.length > 0 && (
-                <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                  <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Imagens
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {selectedAIT.imagens.map((imgPath, idx) => {
-                      const imageUrl = imgPath.startsWith("http")
-                        ? imgPath
-                        : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
+              {/* Imagens, Data e Relatório */}
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                  <Camera className="h-5 w-5" />
+                  Imagens, Data e Relatório
+                </h4>
 
-                      return (
-                        <a
-                          key={idx}
-                          href={imageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="aspect-square rounded-lg overflow-hidden border"
-                        >
-                          <img
-                            src={imageUrl}
-                            alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              // Fallback visual caso a URL venha inválida
-                              e.currentTarget.src = "/placeholder.svg";
-                            }}
-                          />
-                        </a>
-                      );
-                    })}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data da ocorrência</p>
+                    <p className="font-semibold">
+                      {selectedAIT.data_inicio
+                        ? new Date(selectedAIT.data_inicio).toLocaleString("pt-BR")
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Criado em</p>
+                    <p className="font-semibold">{new Date(selectedAIT.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                 </div>
-              )}
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Relatório</p>
+                  <p className="bg-background/50 p-3 rounded-lg whitespace-pre-wrap">
+                    {selectedAIT.relatorio?.trim() ? selectedAIT.relatorio : "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Imagens</p>
+                  {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {selectedAIT.imagens.map((imgPath, idx) => {
+                        const imageUrl = imgPath.startsWith("http")
+                          ? imgPath
+                          : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
+
+                        return (
+                          <a
+                            key={idx}
+                            href={imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square rounded-lg overflow-hidden border"
+                          >
+                            <img
+                              src={imageUrl}
+                              alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg";
+                              }}
+                            />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma imagem anexada.</p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {selectedAIT.status === "pendente" && (

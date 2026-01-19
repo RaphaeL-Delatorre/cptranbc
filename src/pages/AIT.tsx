@@ -344,20 +344,18 @@ const AIT = () => {
                   <table className="w-full">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="text-left p-4 font-semibold text-sm">Nº AIT</th>
+                        <th className="text-left p-4 font-semibold text-sm">Nº do AIT</th>
                         <th className="text-left p-4 font-semibold text-sm">Data</th>
-                        <th className="text-left p-4 font-semibold text-sm">Condutor</th>
-                        <th className="text-left p-4 font-semibold text-sm">Veículo</th>
-                        <th className="text-left p-4 font-semibold text-sm">Status</th>
+                        <th className="text-left p-4 font-semibold text-sm">Viatura</th>
+                        <th className="text-left p-4 font-semibold text-sm">Situação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
                       {meusAITs.map((ait) => (
                         <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
                           <td className="p-4 font-mono font-semibold">#{ait.numero_ait}</td>
-                          <td className="p-4">{new Date(ait.created_at).toLocaleDateString('pt-BR')}</td>
-                          <td className="p-4">{ait.nome_condutor || "-"}</td>
-                          <td className="p-4">{ait.marca_modelo} ({ait.emplacamento})</td>
+                          <td className="p-4">{new Date(ait.created_at).toLocaleString("pt-BR")}</td>
+                          <td className="p-4">{ait.viatura || "-"}</td>
                           <td className="p-4">
                             <div className="flex flex-col gap-1">
                               {getStatusBadge(ait.status)}
