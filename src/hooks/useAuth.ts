@@ -83,12 +83,18 @@ export const useAuth = () => {
       });
 
       if (error) {
+        // Friendly errors (including leaked-password protection)
+        const anyErr: any = error as any;
         let message = "Erro ao criar conta.";
-        if (error.message.includes("already registered")) {
+
+        if (anyErr?.code === "weak_password" || /weak/i.test(error.message)) {
+          message = "Senha fraca ou vazada. Use uma senha mais forte (mín. 8 caracteres, com letras e números).";
+        } else if (error.message.toLowerCase().includes("already registered")) {
           message = "Este e-mail já está registrado.";
-        } else if (error.message.includes("password")) {
-          message = "A senha deve ter pelo menos 6 caracteres.";
+        } else if (error.message.toLowerCase().includes("password")) {
+          message = "A senha é inválida. Use uma senha mais forte.";
         }
+
         toast({
           title: "Erro no cadastro",
           description: message,
