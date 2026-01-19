@@ -83,15 +83,21 @@ export const useAuth = () => {
       });
 
       if (error) {
-        // Friendly errors (including leaked-password protection)
+        // Friendly errors (including leaked-password protection and profile unique constraints)
         const anyErr: any = error as any;
+        const raw = `${anyErr?.message ?? ""} ${anyErr?.code ?? ""}`.toLowerCase();
+
         let message = "Erro ao criar conta.";
 
-        if (anyErr?.code === "weak_password" || /weak/i.test(error.message)) {
+        if (anyErr?.code === "weak_password" || raw.includes("weak_password") || raw.includes("pwned")) {
           message = "Senha fraca ou vazada. Use uma senha mais forte (mín. 8 caracteres, com letras e números).";
-        } else if (error.message.toLowerCase().includes("already registered")) {
+        } else if (raw.includes("profiles_rg_unique") || raw.includes("unique constraint \"profiles_rg_unique\"") || raw.includes("duplicate key value")) {
+          message = "Este RG já está cadastrado.";
+        } else if (raw.includes("profiles_email_unique")) {
           message = "Este e-mail já está registrado.";
-        } else if (error.message.toLowerCase().includes("password")) {
+        } else if (raw.includes("already registered")) {
+          message = "Este e-mail já está registrado.";
+        } else if (raw.includes("password")) {
           message = "A senha é inválida. Use uma senha mais forte.";
         }
 

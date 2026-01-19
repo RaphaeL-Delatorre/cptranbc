@@ -67,19 +67,10 @@ const Admin = () => {
   });
 
   const emailPreview = useMemo(() => {
-    const nome = credentials.nome.trim();
-    if (!nome) return "";
-    const normalized = nome
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, "")
-      .trim()
-      .replace(/\s+/g, " ");
-    const parts = normalized.split(" ").filter(Boolean);
-    if (parts.length < 2) return "";
-    return `${parts[0]}.${parts[parts.length - 1]}@cptran.gov.br`;
-  }, [credentials.nome]);
+    const rg = credentials.rg.trim();
+    if (!rg) return "";
+    return `${rg}@cptran.gov.br`;
+  }, [credentials.rg]);
 
   // Load saved RG on mount
   useEffect(() => {
@@ -135,20 +126,8 @@ const Admin = () => {
     }
 
     try {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("rg", credentials.rg)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-      if (!profile?.email) {
-        toast({ title: "Erro no login", description: "RG não encontrado.", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-
-      await signIn(profile.email, credentials.password);
+      const email = `${credentials.rg.trim()}@cptran.gov.br`;
+      await signIn(email, credentials.password);
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao fazer login.", variant: "destructive" });
     } finally {
@@ -170,39 +149,11 @@ const Admin = () => {
       return;
     }
 
-    if (!emailPreview) {
-      toast({ title: "Erro", description: "Informe Nome e Sobrenome.", variant: "destructive" });
-      return;
-    }
+    const email = `${credentials.rg.trim()}@cptran.gov.br`;
 
     setLoading(true);
     try {
-      // Impedir mesmo Nome+Sobrenome (email) e mesmo RG
-      const { data: existsByRg, error: rgErr } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("rg", credentials.rg)
-        .maybeSingle();
-      if (rgErr) throw rgErr;
-      if (existsByRg) {
-        toast({ title: "Erro no cadastro", description: "Este RG já está cadastrado.", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-
-      const { data: existsByEmail, error: emailErr } = await supabase
-        .from("profiles")
-        .select("id")
-        .ilike("email", emailPreview)
-        .maybeSingle();
-      if (emailErr) throw emailErr;
-      if (existsByEmail) {
-        toast({ title: "Erro no cadastro", description: "Nome e Sobrenome já existente no sistema.", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-
-      const { error } = await signUp(emailPreview, credentials.password, credentials.nome, credentials.rg);
+      const { error } = await signUp(email, credentials.password, credentials.nome, credentials.rg);
       if (!error) {
         setIsSignUp(false);
         setCredentials({ rg: credentials.rg, password: "", confirmPassword: "", nome: "" });
