@@ -37,7 +37,11 @@ const signupSchema = z
       .regex(/^\d+$/, { message: "RG deve conter apenas números" })
       .min(1, { message: "Informe o RG" })
       .max(30, { message: "RG muito longo" }),
-    password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
+    password: z
+      .string()
+      .min(8, { message: "Senha deve ter pelo menos 8 caracteres" })
+      .regex(/[A-Za-z]/, { message: "Senha deve conter letras" })
+      .regex(/\d/, { message: "Senha deve conter números" }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
