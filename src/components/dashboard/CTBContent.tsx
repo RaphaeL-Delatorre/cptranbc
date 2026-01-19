@@ -315,13 +315,9 @@ const CTBContent = () => {
     const overCat = byId.get(overId)?.categoria;
 
     // Keep ordering per-category (DB column 'ordem' is per category).
-    // If user tries to drag across categories, we block to avoid inconsistent ordering.
+    // If user tries to drag across categories, we ignore the move (no-op).
     if (activeCat && overCat && activeCat !== overCat) {
-      toast({
-        title: "Apenas dentro da categoria",
-        description: "Para manter a sequência, arraste apenas dentro da mesma categoria.",
-        variant: "destructive",
-      });
+      // no-op
       return;
     }
 
