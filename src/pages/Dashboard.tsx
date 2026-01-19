@@ -41,11 +41,12 @@ import { AITStatisticsCharts } from "@/components/dashboard/AITStatisticsCharts"
 import { MyProfileContent } from "@/components/dashboard/MyProfileContent";
 import { PontoEletronicoContent } from "@/components/dashboard/PontoEletronicoContent";
 import { AITContent } from "@/components/dashboard/AITContent";
+import CTBContent from "@/components/dashboard/CTBContent";
 import { exportAITToPDF, exportAllAITsToPDF } from "@/utils/pdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock } from "lucide-react";
 
-type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "ait-estatisticas" | "ponto" | "usuarios" | "config";
+type TabType = "dashboard" | "perfil" | "hierarquia" | "ait" | "ait-estatisticas" | "ponto" | "ctb" | "usuarios" | "config";
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -559,6 +560,9 @@ const Dashboard = () => {
       case "ait":
         return <AITContent />;
 
+      case "ctb":
+        return <CTBContent />;
+
       case "usuarios":
         return (
           <div className="space-y-6">
@@ -950,6 +954,17 @@ const Dashboard = () => {
               >
                 <FileText className="h-4 w-4" />
                 Estatísticas
+              </button>
+              <button
+                onClick={() => setActiveTab("ctb")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === "ctb"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <FileText className="h-5 w-5" />
+                CTB
               </button>
               <button
                 onClick={() => setActiveTab("ponto")}

@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAITs, type AIT } from "@/hooks/useAITs";
 import { useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
-import { supabase } from "@/integrations/supabase/client";
+import { useUserCargosPermissoes } from "@/hooks/useCargosPermissoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   User, 
@@ -32,15 +32,16 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type ProfileTab = "aits" | "pontos";
+type ProfileTab = "cargos" | "permissoes" | "pontos";
 
 export const MyProfileContent = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: aits = [], isLoading: aitsLoading } = useAITs();
   const { data: pontos = [], isLoading: pontosLoading } = useMeusPontos();
+  const { data: cargosPerms, isLoading: cargosPermsLoading } = useUserCargosPermissoes(user?.id);
   
-  const [profileTab, setProfileTab] = useState<ProfileTab>("aits");
+  const [profileTab, setProfileTab] = useState<ProfileTab>("cargos");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileData, setProfileData] = useState({

@@ -26,6 +26,11 @@ const navItems = [
     icon: FileText,
   },
   {
+    name: "CTB",
+    path: "/ctb",
+    icon: FileText,
+  },
+  {
     name: "AIT",
     path: "/ait",
     icon: Car,
