@@ -5,29 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
 import { useUserCargosPermissoes } from "@/hooks/useCargosPermissoes";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   User,
   Mail,
   Key,
   Shield,
-  Clock,
-  Eye,
   Check,
-  X,
   Loader2,
   Edit,
   Save,
-  Search,
 } from "lucide-react";
-type ProfileTab = "cargos" | "permissoes" | "pontos";
+
+type ProfileTab = "cargos" | "permissoes";
 
 export const MyProfileContent = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { data: pontos = [], isLoading: pontosLoading } = useMeusPontos();
   const { data: cargosPerms, isLoading: cargosPermsLoading } = useUserCargosPermissoes(user?.id);
 
   const [profileTab, setProfileTab] = useState<ProfileTab>("cargos");
@@ -42,41 +36,25 @@ export const MyProfileContent = () => {
     confirmPassword: "",
   });
   const [saving, setSaving] = useState(false);
-  const [selectedPonto, setSelectedPonto] = useState<PontoEletronico | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "todos" | "ativo" | "pausado" | "finalizado" | "pendente" | "aprovado" | "recusado"
-  >("todos");
 
   // Load profile data
   useEffect(() => {
     const loadProfile = async () => {
       if (!user?.id) return;
-      
+
       const { data } = await supabase
         .from("profiles")
         .select("nome")
         .eq("user_id", user.id)
         .single();
-      
+
       if (data) {
-        setProfileData(prev => ({ ...prev, nome: data.nome || "" }));
+        setProfileData((prev) => ({ ...prev, nome: data.nome || "" }));
       }
     };
-    
+
     loadProfile();
   }, [user?.id]);
-
-  // Filter pontos created by this user
-  const myPontos = pontos.filter(ponto => {
-    if (statusFilter !== "todos" && ponto.status !== statusFilter) return false;
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      ponto.nome_policial?.toLowerCase().includes(term) ||
-      ponto.viatura?.toLowerCase().includes(term)
-    );
-  });
 
   const handleUpdateProfile = async () => {
     if (!profileData.nome.trim() && !profileData.email.trim()) {
@@ -89,7 +67,7 @@ export const MyProfileContent = () => {
       // Update email in auth if changed
       if (profileData.email && profileData.email !== user?.email) {
         const { error: authError } = await supabase.auth.updateUser({
-          email: profileData.email
+          email: profileData.email,
         });
         if (authError) throw authError;
       }
@@ -100,7 +78,7 @@ export const MyProfileContent = () => {
           .from("profiles")
           .update({ nome: profileData.nome })
           .eq("user_id", user?.id);
-        
+
         if (profileError) throw profileError;
       }
 
@@ -126,7 +104,7 @@ export const MyProfileContent = () => {
     setSaving(true);
     try {
       const { error } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
+        password: passwordData.newPassword,
       });
 
       if (error) throw error;
@@ -138,25 +116,6 @@ export const MyProfileContent = () => {
       toast({ title: "Erro", description: error.message || "Erro ao alterar senha.", variant: "destructive" });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "ativo":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Ativo</span>;
-      case "pausado":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-secondary/20 text-secondary">Pausado</span>;
-      case "finalizado":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted/50 text-foreground">Finalizado</span>;
-      case "pendente":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Pendente</span>;
-      case "aprovado":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-success/20 text-success">Aprovado</span>;
-      case "recusado":
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">Recusado</span>;
-      default:
-        return null;
     }
   };
 
@@ -272,10 +231,13 @@ export const MyProfileContent = () => {
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                 Alterar Senha
               </Button>
-              <Button variant="outline" onClick={() => {
-                setIsChangingPassword(false);
-                setPasswordData({ newPassword: "", confirmPassword: "" });
-              }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsChangingPassword(false);
+                  setPasswordData({ newPassword: "", confirmPassword: "" });
+                }}
+              >
                 Cancelar
               </Button>
             </div>
@@ -283,27 +245,21 @@ export const MyProfileContent = () => {
         )}
       </div>
 
-      {/* Cargo, Permissões & Pontos */}
+      {/* Cargo & Permissões */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              {profileTab === "pontos" ? (
-                <Clock className="h-5 w-5 text-primary" />
-              ) : (
-                <Shield className="h-5 w-5 text-primary" />
-              )}
+              <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="font-display text-lg font-bold">
                 {profileTab === "cargos" && "Meu Cargo"}
                 {profileTab === "permissoes" && "Minhas Permissões"}
-                {profileTab === "pontos" && "Meus Pontos"}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {profileTab === "cargos" && "Cargos atribuídos ao seu usuário"}
                 {profileTab === "permissoes" && "Permissões efetivas a partir dos seus cargos"}
-                {profileTab === "pontos" && "Histórico de Pontos Eletrônicos"}
               </p>
             </div>
           </div>
@@ -326,48 +282,7 @@ export const MyProfileContent = () => {
                 <Key className="h-4 w-4 mr-1" />
                 Permissões
               </Button>
-              <Button
-                variant={profileTab === "pontos" ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setProfileTab("pontos");
-                  setSearchTerm("");
-                  setStatusFilter("todos");
-                }}
-              >
-                <Clock className="h-4 w-4 mr-1" />
-                Pontos
-              </Button>
             </div>
-
-            {profileTab === "pontos" && (
-              <>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar..."
-                    className="pl-9 w-48"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-
-                <Select value={statusFilter} onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="pausado">Pausado</SelectItem>
-                    <SelectItem value="finalizado">Finalizado</SelectItem>
-                    <SelectItem value="pendente">Pendentes</SelectItem>
-                    <SelectItem value="aprovado">Aprovados</SelectItem>
-                    <SelectItem value="recusado">Recusados</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )}
           </div>
         </div>
 
@@ -428,177 +343,7 @@ export const MyProfileContent = () => {
             )}
           </div>
         )}
-
-        {/* Pontos Tab */}
-        {profileTab === "pontos" && (
-          <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
-            {pontosLoading ? (
-              <div className="p-8 text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-              </div>
-            ) : myPontos.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                {searchTerm ? "Nenhum ponto encontrado." : "Você ainda não registrou nenhum ponto."}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-4 font-semibold text-sm">Data</th>
-                      <th className="text-left p-4 font-semibold text-sm">Função</th>
-                      <th className="text-left p-4 font-semibold text-sm">Viatura</th>
-                      <th className="text-left p-4 font-semibold text-sm">Duração</th>
-                      <th className="text-left p-4 font-semibold text-sm">Situação</th>
-                      <th className="text-left p-4 font-semibold text-sm">Responsável</th>
-                      <th className="text-right p-4 font-semibold text-sm">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {myPontos.map((ponto) => (
-                      <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="p-4 text-muted-foreground">{new Date(ponto.created_at).toLocaleString("pt-BR")}</td>
-                        <td className="p-4 capitalize">{ponto.funcao}</td>
-                        <td className="p-4">{ponto.viatura || "-"}</td>
-                        <td className="p-4 font-mono">
-                          {ponto.tempo_total_segundos ? formatDuration(ponto.tempo_total_segundos) : "-"}
-                        </td>
-                        <td className="p-4">{getStatusBadge(ponto.status)}</td>
-                        <td className="p-4 text-sm">{ponto.aprovador_nome || "-"}</td>
-                        <td className="p-4 text-right">
-                          <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(ponto)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
       </div>
-
-      {/* Ponto Detail Modal (mesmo padrão do Dashboard) */}
-      {selectedPonto && (
-        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-display text-2xl font-bold">Detalhes do Ponto</h3>
-                <p className="text-sm text-muted-foreground">
-                  Iniciado em {new Date(selectedPonto.data_inicio).toLocaleString("pt-BR")}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {getStatusBadge(selectedPonto.status)}
-                <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(null)}>
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg">Policial</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Nome</p>
-                    <p className="font-semibold">{selectedPonto.nome_policial || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Patente</p>
-                    <p className="font-semibold">{selectedPonto.patente || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Função</p>
-                    <p className="font-semibold">{selectedPonto.funcao}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg">Serviço</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Viatura</p>
-                    <p className="font-semibold">{selectedPonto.viatura || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ponto Discord</p>
-                    <p className="font-semibold">{selectedPonto.ponto_discord || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Início</p>
-                    <p className="font-semibold">{new Date(selectedPonto.data_inicio).toLocaleString("pt-BR")}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fim</p>
-                    <p className="font-semibold">
-                      {selectedPonto.data_fim ? new Date(selectedPonto.data_fim).toLocaleString("pt-BR") : "-"}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground">Duração Total</p>
-                  <p className="font-semibold text-xl font-mono">
-                    {formatDuration(selectedPonto.tempo_total_segundos || 0)}
-                  </p>
-                </div>
-
-                {selectedPonto.observacao && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Observação</p>
-                    <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.observacao}</p>
-                  </div>
-                )}
-              </div>
-
-              {(selectedPonto.aprovador_nome || selectedPonto.motivo_recusa) && (
-                <div
-                  className={`rounded-xl p-5 space-y-4 ${
-                    selectedPonto.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
-                  }`}
-                >
-                  <h4
-                    className={`font-semibold text-lg ${
-                      selectedPonto.status === "recusado" ? "text-destructive" : "text-success"
-                    }`}
-                  >
-                    {selectedPonto.status === "aprovado" ? "Aprovação" : "Reprovação"}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedPonto.aprovador_nome && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedPonto.status === "aprovado" ? "Aprovado por" : "Recusado por"}
-                        </p>
-                        <p className="font-semibold">{selectedPonto.aprovador_nome}</p>
-                      </div>
-                    )}
-                    {selectedPonto.data_aprovacao && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Data</p>
-                        <p className="font-semibold">
-                          {new Date(selectedPonto.data_aprovacao).toLocaleString("pt-BR")}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {selectedPonto.motivo_recusa && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Motivo</p>
-                      <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.motivo_recusa}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

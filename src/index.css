@@ -34,6 +34,12 @@
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
+    /* CTB category tokens */
+    --category-doc: 210 90% 45%;
+    --category-est: 142 76% 36%;
+    --category-flag: 48 100% 50%;
+    --category-vida: 0 72% 50%;
+
     --border: 0 0% 88%;
     --input: 0 0% 88%;
     --ring: 48 100% 50%;
@@ -90,6 +96,12 @@
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
+
+    /* CTB category tokens */
+    --category-doc: 210 90% 55%;
+    --category-est: 142 76% 46%;
+    --category-flag: 48 100% 55%;
+    --category-vida: 0 72% 60%;
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
