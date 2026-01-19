@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock, LogIn } from "lucide-react";
-import { useCreateAIT, useMeusAITs } from "@/hooks/useAITs";
+import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock, LogIn, Eye, Download } from "lucide-react";
+import { useCreateAIT, useMeusAITs, type AIT as AITType } from "@/hooks/useAITs";
 import { useAuth } from "@/hooks/useAuth";
 import { patentes, artigos, providencias, prefixosViaturas } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
+import { exportAITToPDF } from "@/utils/pdfExport";
 
 const initialFormData = {
   // Step 1 - Identificação do Policial
@@ -57,6 +58,7 @@ const AIT = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [uploading, setUploading] = useState(false);
   const [showMeusAITs, setShowMeusAITs] = useState(false);
+  const [selectedMeusAIT, setSelectedMeusAIT] = useState<AITType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, loading: authLoading } = useAuth();
   const createAIT = useCreateAIT();
@@ -133,20 +135,32 @@ const AIT = () => {
   };
 
   const uploadImages = async (): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
+    if (!formData.imagensAutuacao.length) return [];
+    if (!user?.id) throw new Error("Usuário não autenticado");
+
+    const uploadedPaths: string[] = [];
+
     for (const file of formData.imagensAutuacao) {
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split(".").pop() || "jpg";
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${fileName}`;
-      const { error } = await supabase.storage.from("ait-images").upload(filePath, file);
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error } = await supabase.storage.from("ait-images").upload(filePath, file, {
+        upsert: false,
+        contentType: file.type || undefined,
+        cacheControl: "3600",
+      });
+
       if (error) {
         console.error("Error uploading image:", error);
-        continue;
+        throw error;
       }
-      const { data: publicUrl } = supabase.storage.from("ait-images").getPublicUrl(filePath);
-      uploadedUrls.push(publicUrl.publicUrl);
+
+      // Salva o PATH no banco (mais estável); a visualização resolve para URL pública.
+      uploadedPaths.push(filePath);
     }
-    return uploadedUrls;
+
+    return uploadedPaths;
   };
 
   // Validation helper: check if name has at least 2 words (name + surname)
@@ -348,6 +362,8 @@ const AIT = () => {
                         <th className="text-left p-4 font-semibold text-sm">Data</th>
                         <th className="text-left p-4 font-semibold text-sm">Viatura</th>
                         <th className="text-left p-4 font-semibold text-sm">Situação</th>
+                        <th className="text-left p-4 font-semibold text-sm">Responsável</th>
+                        <th className="text-right p-4 font-semibold text-sm">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -356,14 +372,16 @@ const AIT = () => {
                           <td className="p-4 font-mono font-semibold">#{ait.numero_ait}</td>
                           <td className="p-4">{new Date(ait.created_at).toLocaleString("pt-BR")}</td>
                           <td className="p-4">{ait.viatura || "-"}</td>
-                          <td className="p-4">
-                            <div className="flex flex-col gap-1">
-                              {getStatusBadge(ait.status)}
-                              {ait.status === "recusado" && ait.motivo_recusa && (
-                                <p className="text-xs text-destructive mt-1">
-                                  <strong>Motivo:</strong> {ait.motivo_recusa}
-                                </p>
-                              )}
+                          <td className="p-4">{getStatusBadge(ait.status)}</td>
+                          <td className="p-4 text-sm">{ait.aprovador_nome || "-"}</td>
+                          <td className="p-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button size="icon" variant="ghost" onClick={() => setSelectedMeusAIT(ait)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
+                                <Download className="h-4 w-4" />
+                              </Button>
                             </div>
                           </td>
                         </tr>

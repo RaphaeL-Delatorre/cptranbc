@@ -377,6 +377,7 @@ export const MyProfileContent = () => {
                       <th className="text-left p-4 font-semibold text-sm">Data</th>
                       <th className="text-left p-4 font-semibold text-sm">Viatura</th>
                       <th className="text-left p-4 font-semibold text-sm">Situação</th>
+                      <th className="text-left p-4 font-semibold text-sm">Responsável</th>
                       <th className="text-right p-4 font-semibold text-sm">Ações</th>
                     </tr>
                   </thead>
@@ -389,6 +390,7 @@ export const MyProfileContent = () => {
                         </td>
                         <td className="p-4">{ait.viatura || "-"}</td>
                         <td className="p-4">{getStatusBadge(ait.status)}</td>
+                        <td className="p-4 text-sm">{ait.aprovador_nome || "-"}</td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
                             <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
@@ -429,6 +431,7 @@ export const MyProfileContent = () => {
                       <th className="text-left p-4 font-semibold text-sm">Viatura</th>
                       <th className="text-left p-4 font-semibold text-sm">Duração</th>
                       <th className="text-left p-4 font-semibold text-sm">Situação</th>
+                      <th className="text-left p-4 font-semibold text-sm">Responsável</th>
                       <th className="text-right p-4 font-semibold text-sm">Ações</th>
                     </tr>
                   </thead>
@@ -444,6 +447,7 @@ export const MyProfileContent = () => {
                           {ponto.tempo_total_segundos ? formatDuration(ponto.tempo_total_segundos) : "-"}
                         </td>
                         <td className="p-4">{getStatusBadge(ponto.status)}</td>
+                        <td className="p-4 text-sm">{ponto.aprovador_nome || "-"}</td>
                         <td className="p-4 text-right">
                           <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(ponto)}>
                             <Eye className="h-4 w-4" />
@@ -459,80 +463,183 @@ export const MyProfileContent = () => {
         )}
       </div>
 
-      {/* AIT Detail Modal */}
+      {/* AIT Detail Modal (mesmo padrão do Dashboard) */}
       {selectedAIT && (
         <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="font-display text-2xl font-bold">AIT #{selectedAIT.numero_ait}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Criado em {new Date(selectedAIT.created_at).toLocaleString('pt-BR')}
+                  Criado em {new Date(selectedAIT.created_at).toLocaleString("pt-BR")}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 {getStatusBadge(selectedAIT.status)}
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => exportAITToPDF(selectedAIT)}
+                  title="Exportar PDF"
+                >
+                  <Download className="h-5 w-5" />
+                </Button>
                 <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(null)}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Motorista</p>
-                  <p className="font-semibold">{selectedAIT.nome_condutor}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Placa</p>
-                  <p className="font-semibold font-mono">{selectedAIT.emplacamento}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Viatura</p>
-                  <p className="font-semibold">{selectedAIT.viatura}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Marca/Modelo</p>
-                  <p className="font-semibold">{selectedAIT.marca_modelo}</p>
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Artigos Infringidos</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedAIT.artigos_infringidos?.map((art) => (
-                    <span key={art} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
-                      {art}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Providências Tomadas</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedAIT.providencias_tomadas?.map((prov) => (
-                    <span key={prov} className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium">
-                      {prov}
-                    </span>
-                  ))}
+
+            <div className="space-y-6">
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Policial Responsável
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Graduação</p>
+                    <p className="font-semibold">{selectedAIT.graduacao}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nome</p>
+                    <p className="font-semibold">{selectedAIT.nome_agente}</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg">Viatura e Equipe</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Viatura</p>
+                    <p className="font-semibold">{selectedAIT.viatura}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Motorista</p>
+                    <p className="font-semibold">{selectedAIT.primeiro_homem}</p>
+                  </div>
+                  {selectedAIT.segundo_homem && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Encarregado</p>
+                      <p className="font-semibold">{selectedAIT.segundo_homem}</p>
+                    </div>
+                  )}
+                  {selectedAIT.terceiro_homem && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">3º Homem</p>
+                      <p className="font-semibold">{selectedAIT.terceiro_homem}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg">Veículo e Envolvidos</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Placa</p>
+                    <p className="font-semibold font-mono">{selectedAIT.emplacamento}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Modelo</p>
+                    <p className="font-semibold">{selectedAIT.marca_modelo}</p>
+                  </div>
+                  {selectedAIT.nome_condutor && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Motorista</p>
+                      <p className="font-semibold">{selectedAIT.nome_condutor}</p>
+                    </div>
+                  )}
+                  {selectedAIT.nome_proprietario && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Proprietário</p>
+                      <p className="font-semibold">{selectedAIT.nome_proprietario}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg">Infrações e Providências</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Artigos Infringidos</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedAIT.artigos_infringidos?.map((art) => (
+                        <span key={art} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                          {art}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Providências</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedAIT.providencias_tomadas?.map((prov) => (
+                        <span key={prov} className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium">
+                          {prov}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {(selectedAIT.aprovador_nome || selectedAIT.motivo_recusa) && (
+                <div
+                  className={`rounded-xl p-5 space-y-4 ${
+                    selectedAIT.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
+                  }`}
+                >
+                  <h4
+                    className={`font-semibold text-lg ${
+                      selectedAIT.status === "recusado" ? "text-destructive" : "text-success"
+                    }`}
+                  >
+                    {selectedAIT.status === "aprovado" ? "Aprovação" : "Reprovação"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedAIT.aprovador_nome && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedAIT.status === "aprovado" ? "Aprovado por" : "Reprovado por"}
+                        </p>
+                        <p className="font-semibold">{selectedAIT.aprovador_nome}</p>
+                      </div>
+                    )}
+                    {selectedAIT.data_aprovacao && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Data</p>
+                        <p className="font-semibold">{new Date(selectedAIT.data_aprovacao).toLocaleString("pt-BR")}</p>
+                      </div>
+                    )}
+                  </div>
+                  {selectedAIT.motivo_recusa && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Motivo</p>
+                      <p className="bg-background/50 p-3 rounded-lg">{selectedAIT.motivo_recusa}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Imagens, Data e Relatório
+                </h4>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Data da ocorrência</p>
                     <p className="font-semibold">
-                      {selectedAIT.data_inicio
-                        ? new Date(selectedAIT.data_inicio).toLocaleString("pt-BR")
-                        : "-"}
+                      {selectedAIT.data_inicio ? new Date(selectedAIT.data_inicio).toLocaleString("pt-BR") : "-"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Viatura</p>
-                    <p className="font-semibold">{selectedAIT.viatura || "-"}</p>
+                    <p className="text-sm text-muted-foreground">Criado em</p>
+                    <p className="font-semibold">{new Date(selectedAIT.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                 </div>
 
@@ -546,7 +653,7 @@ export const MyProfileContent = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Imagens</p>
                   {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {selectedAIT.imagens.map((imgPath, idx) => {
                         const imageUrl = imgPath.startsWith("http")
                           ? imgPath
@@ -579,15 +686,125 @@ export const MyProfileContent = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="flex gap-2 mt-6 pt-4 border-t border-border/50">
-              <Button onClick={() => exportAITToPDF(selectedAIT)} className="gap-2">
-                <Download className="h-4 w-4" />
-                Exportar PDF
-              </Button>
-              <Button variant="outline" onClick={() => setSelectedAIT(null)}>
-                Fechar
-              </Button>
+      {/* Ponto Detail Modal (mesmo padrão do Dashboard) */}
+      {selectedPonto && (
+        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-display text-2xl font-bold">Detalhes do Ponto</h3>
+                <p className="text-sm text-muted-foreground">
+                  Iniciado em {new Date(selectedPonto.data_inicio).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {getStatusBadge(selectedPonto.status)}
+                <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(null)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg">Policial</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nome</p>
+                    <p className="font-semibold">{selectedPonto.nome_policial || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Patente</p>
+                    <p className="font-semibold">{selectedPonto.patente || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Função</p>
+                    <p className="font-semibold">{selectedPonto.funcao}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                <h4 className="font-semibold text-primary text-lg">Serviço</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Viatura</p>
+                    <p className="font-semibold">{selectedPonto.viatura || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ponto Discord</p>
+                    <p className="font-semibold">{selectedPonto.ponto_discord || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Início</p>
+                    <p className="font-semibold">{new Date(selectedPonto.data_inicio).toLocaleString("pt-BR")}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fim</p>
+                    <p className="font-semibold">
+                      {selectedPonto.data_fim ? new Date(selectedPonto.data_fim).toLocaleString("pt-BR") : "-"}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Duração Total</p>
+                  <p className="font-semibold text-xl font-mono">
+                    {formatDuration(selectedPonto.tempo_total_segundos || 0)}
+                  </p>
+                </div>
+
+                {selectedPonto.observacao && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Observação</p>
+                    <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.observacao}</p>
+                  </div>
+                )}
+              </div>
+
+              {(selectedPonto.aprovador_nome || selectedPonto.motivo_recusa) && (
+                <div
+                  className={`rounded-xl p-5 space-y-4 ${
+                    selectedPonto.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
+                  }`}
+                >
+                  <h4
+                    className={`font-semibold text-lg ${
+                      selectedPonto.status === "recusado" ? "text-destructive" : "text-success"
+                    }`}
+                  >
+                    {selectedPonto.status === "aprovado" ? "Aprovação" : "Reprovação"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedPonto.aprovador_nome && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedPonto.status === "aprovado" ? "Aprovado por" : "Recusado por"}
+                        </p>
+                        <p className="font-semibold">{selectedPonto.aprovador_nome}</p>
+                      </div>
+                    )}
+                    {selectedPonto.data_aprovacao && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Data</p>
+                        <p className="font-semibold">
+                          {new Date(selectedPonto.data_aprovacao).toLocaleString("pt-BR")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {selectedPonto.motivo_recusa && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Motivo</p>
+                      <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.motivo_recusa}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
