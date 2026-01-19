@@ -9,6 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ListPagination } from "@/components/common/ListPagination";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -83,6 +89,7 @@ export const AITContent = () => {
   const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
 
   // Filters
   const [dateStart, setDateStart] = useState<string>("");
@@ -681,7 +688,7 @@ export const AITContent = () => {
                       {selectedAIT.providencias_tomadas?.map((prov) => (
                         <span
                           key={prov}
-                          className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium"
+                          className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium"
                         >
                           {prov}
                         </span>
@@ -690,47 +697,6 @@ export const AITContent = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Aprovação / Reprovação */}
-              {(selectedAIT.aprovador_nome || selectedAIT.motivo_recusa) && (
-                <div
-                  className={`rounded-xl p-5 space-y-4 ${
-                    selectedAIT.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
-                  }`}
-                >
-                  <h4
-                    className={`font-semibold text-lg ${
-                      selectedAIT.status === "recusado" ? "text-destructive" : "text-success"
-                    }`}
-                  >
-                    {selectedAIT.status === "aprovado" ? "Aprovação" : "Reprovação"}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedAIT.aprovador_nome && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedAIT.status === "aprovado" ? "Aprovado por" : "Reprovado por"}
-                        </p>
-                        <p className="font-semibold">{selectedAIT.aprovador_nome}</p>
-                      </div>
-                    )}
-                    {selectedAIT.data_aprovacao && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Data</p>
-                        <p className="font-semibold">
-                          {new Date(selectedAIT.data_aprovacao).toLocaleDateString("pt-BR")}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {selectedAIT.motivo_recusa && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Motivo</p>
-                      <p className="bg-background/50 p-3 rounded-lg">{selectedAIT.motivo_recusa}</p>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Imagens, Data e Relatório */}
               <div className="bg-muted/30 rounded-xl p-5 space-y-4">
@@ -764,30 +730,32 @@ export const AITContent = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Imagens</p>
                   {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
                       {selectedAIT.imagens.map((imgPath, idx) => {
                         const imageUrl = imgPath.startsWith("http")
                           ? imgPath
                           : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
 
+                        const alt = `Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`;
+
                         return (
-                          <a
+                          <button
                             key={idx}
-                            href={imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-square rounded-lg overflow-hidden border"
+                            type="button"
+                            onClick={() => setPreviewImage({ url: imageUrl, alt })}
+                            className="h-20 w-20 sm:h-24 sm:w-24 rounded-lg overflow-hidden border bg-background/30 hover:bg-background/50 transition-colors"
+                            title="Ver imagem"
                           >
                             <img
                               src={imageUrl}
-                              alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
+                              alt={alt}
                               className="w-full h-full object-cover"
                               loading="lazy"
                               onError={(e) => {
                                 e.currentTarget.src = "/placeholder.svg";
                               }}
                             />
-                          </a>
+                          </button>
                         );
                       })}
                     </div>
@@ -795,7 +763,66 @@ export const AITContent = () => {
                     <p className="text-sm text-muted-foreground">Nenhuma imagem anexada.</p>
                   )}
                 </div>
+
+                {/* Aprovação / Reprovação (sempre no final) */}
+                {(selectedAIT.aprovador_nome || selectedAIT.motivo_recusa) && (
+                  <div
+                    className={`rounded-xl p-5 space-y-4 ${
+                      selectedAIT.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
+                    }`}
+                  >
+                    <h4
+                      className={`font-semibold text-lg ${
+                        selectedAIT.status === "recusado" ? "text-destructive" : "text-success"
+                      }`}
+                    >
+                      {selectedAIT.status === "aprovado" ? "Aprovação" : "Reprovação"}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedAIT.aprovador_nome && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedAIT.status === "aprovado" ? "Aprovado por" : "Reprovado por"}
+                          </p>
+                          <p className="font-semibold">{selectedAIT.aprovador_nome}</p>
+                        </div>
+                      )}
+                      {selectedAIT.data_aprovacao && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Data</p>
+                          <p className="font-semibold">
+                            {new Date(selectedAIT.data_aprovacao).toLocaleDateString("pt-BR")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {selectedAIT.motivo_recusa && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Motivo</p>
+                        <p className="bg-background/50 p-3 rounded-lg">{selectedAIT.motivo_recusa}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
+              <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Imagem do AIT</DialogTitle>
+                  </DialogHeader>
+                  {previewImage && (
+                    <div className="rounded-lg overflow-hidden border bg-background">
+                      <img
+                        src={previewImage.url}
+                        alt={previewImage.alt}
+                        className="w-full h-auto max-h-[70vh] object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
 
             {selectedAIT.status === "pendente" && (
