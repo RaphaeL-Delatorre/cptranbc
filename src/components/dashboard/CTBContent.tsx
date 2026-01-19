@@ -212,22 +212,17 @@ const CTBContent = () => {
     });
   }, [artigos, categoria, search]);
 
-  // Local ordering for drag & drop (only meaningful when a single category is selected)
-  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  // Local ordering for drag & drop (works with or without category filter)
+  const [orderedIds, setOrderedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!categoria) {
-      setOrderedIds(null);
-      return;
-    }
     setOrderedIds(filtered.map((a) => a.id));
-  }, [categoria, filtered]);
+  }, [filtered]);
 
   const orderedFiltered = useMemo(() => {
-    if (!categoria || !orderedIds) return filtered;
     const byId = new Map(filtered.map((a) => [a.id, a] as const));
     return orderedIds.map((id) => byId.get(id)).filter(Boolean) as CTBArticle[];
-  }, [categoria, filtered, orderedIds]);
+  }, [filtered, orderedIds]);
 
   const stats = useMemo(() => {
     const countBy = (key: PenaltyKey) => artigos.filter((i) => Boolean(i[key])).length;
@@ -308,23 +303,44 @@ const CTBContent = () => {
   );
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    if (!categoria || !orderedIds || !isAdmin) return;
+    if (!orderedIds.length || !isAdmin) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = orderedIds.indexOf(String(active.id));
-    const newIndex = orderedIds.indexOf(String(over.id));
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    const byId = new Map(artigos.map((a) => [a.id, a] as const));
+    const activeCat = byId.get(activeId)?.categoria;
+    const overCat = byId.get(overId)?.categoria;
+
+    // Keep ordering per-category (DB column 'ordem' is per category).
+    // If user tries to drag across categories, we block to avoid inconsistent ordering.
+    if (activeCat && overCat && activeCat !== overCat) {
+      toast({
+        title: "Apenas dentro da categoria",
+        description: "Para manter a sequência, arraste apenas dentro da mesma categoria.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const oldIndex = orderedIds.indexOf(activeId);
+    const newIndex = orderedIds.indexOf(overId);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const next = arrayMove(orderedIds, oldIndex, newIndex);
     setOrderedIds(next);
 
     try {
-      await reorderArticles.mutateAsync({ categoria, orderedIds: next });
+      const categoriaToUpdate = activeCat ?? (categoria ?? "");
+      const idsInCategoria = next.filter((id) => byId.get(id)?.categoria === categoriaToUpdate);
+      if (!categoriaToUpdate || idsInCategoria.length === 0) return;
+
+      await reorderArticles.mutateAsync({ categoria: categoriaToUpdate, orderedIds: idsInCategoria });
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message || "Erro ao reordenar.", variant: "destructive" });
-      // Revert (best effort)
-      setOrderedIds(orderedIds);
+      setOrderedIds(filtered.map((a) => a.id));
     }
   };
 
@@ -403,7 +419,7 @@ const CTBContent = () => {
             </div>
             {isAdmin && (
               <p className="text-xs text-muted-foreground">
-                Dica: selecione uma categoria para habilitar o “arrastar e soltar” e ordenar.
+                Dica: você pode arrastar e soltar para ordenar (a ordem é salva por categoria).
               </p>
             )}
           </div>
@@ -444,15 +460,15 @@ const CTBContent = () => {
                 </thead>
 
                 <SortableContext
-                  items={(categoria ? orderedFiltered : filtered).map((a) => a.id)}
+                  items={orderedFiltered.map((a) => a.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <tbody className="divide-y divide-border/50">
-                    {(categoria ? orderedFiltered : filtered).map((a) => (
+                    {orderedFiltered.map((a) => (
                       <SortableRow
                         key={a.id}
                         article={a}
-                        isAdmin={isAdmin && Boolean(categoria)}
+                        isAdmin={isAdmin}
                         onEdit={openEdit}
                         onDelete={remove}
                         deleting={deleteArticle.isPending}
