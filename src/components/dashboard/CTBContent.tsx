@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ import {
   useReorderCTBArticles,
   type CTBArticle,
 } from "@/hooks/useCTB";
-import { FileText, GripVertical, Loader2, Plus, Search, Trash2, Edit } from "lucide-react";
+import { FileText, GripVertical, Loader2, Plus, Search, Trash2, Edit, BadgeDollarSign, Hand, Truck, AlertTriangle, Ban, Shield } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -197,6 +198,7 @@ const CTBContent = () => {
 
   const [search, setSearch] = useState("");
   const [categoria, setCategoria] = useState<CTBCategory | null>(null);
+  const [penalidade, setPenalidade] = useState<PenaltyKey | null>(null);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CTBArticle | null>(null);
@@ -206,11 +208,12 @@ const CTBContent = () => {
     const term = search.trim().toLowerCase();
     return artigos.filter((a) => {
       if (categoria && a.categoria !== categoria) return false;
+      if (penalidade && !a[penalidade]) return false;
       if (!term) return true;
       const hay = `${a.categoria} ${a.artigo} ${a.descricao}`.toLowerCase();
       return hay.includes(term);
     });
-  }, [artigos, categoria, search]);
+  }, [artigos, categoria, penalidade, search]);
 
   // Local ordering for drag & drop (works with or without category filter)
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
@@ -343,11 +346,11 @@ const CTBContent = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <FileText className="h-6 w-6 text-primary" />
+            <div className="w-12 h-12 rounded-xl bg-category-doc/15 flex items-center justify-center">
+              <FileText className="h-6 w-6 text-category-doc" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.total}</p>
@@ -355,17 +358,77 @@ const CTBContent = () => {
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-          <p className="text-sm text-muted-foreground">Com Multa</p>
-          <p className="text-2xl font-bold text-foreground">{stats.multa}</p>
+
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center">
+              <BadgeDollarSign className="h-6 w-6 text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.multa}</p>
+              <p className="text-sm text-muted-foreground">Com Multa</p>
+            </div>
+          </div>
         </div>
-        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-          <p className="text-sm text-muted-foreground">Com Retenção</p>
-          <p className="text-2xl font-bold text-foreground">{stats.retencao}</p>
+
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-info/15 flex items-center justify-center">
+              <Hand className="h-6 w-6 text-info" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.retencao}</p>
+              <p className="text-sm text-muted-foreground">Com Retenção</p>
+            </div>
+          </div>
         </div>
-        <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-          <p className="text-sm text-muted-foreground">Com Prisão</p>
-          <p className="text-2xl font-bold text-foreground">{stats.prisao}</p>
+
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-warning/15 flex items-center justify-center">
+              <Truck className="h-6 w-6 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.remocao}</p>
+              <p className="text-sm text-muted-foreground">Com Remoção</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.apreensao}</p>
+              <p className="text-sm text-muted-foreground">Com Apreensão</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-violet/15 flex items-center justify-center">
+              <Ban className="h-6 w-6 text-violet" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.revogacao}</p>
+              <p className="text-sm text-muted-foreground">Com Revogação</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-destructive/15 flex items-center justify-center">
+              <Shield className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.prisao}</p>
+              <p className="text-sm text-muted-foreground">Com Prisão</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -395,6 +458,26 @@ const CTBContent = () => {
                     onClick={() => setCategoria((prev) => (prev === c ? null : c))}
                   >
                     {c}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Penalidade</div>
+            <div className="flex flex-wrap gap-2">
+              {penalties.map((p) => {
+                const active = penalidade === p.key;
+                return (
+                  <Button
+                    key={p.key}
+                    size="sm"
+                    variant="outline"
+                    className={`${active ? "ring-1 ring-ring" : ""}`}
+                    onClick={() => setPenalidade((prev) => (prev === p.key ? null : p.key))}
+                  >
+                    {p.label}
                   </Button>
                 );
               })}
@@ -501,17 +584,33 @@ const CTBContent = () => {
             </div>
 
             <div className="md:col-span-2">
-              <Label>Penalidades</Label>
-              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-3">
-                {penalties.map((p) => (
-                  <label key={p.key} className="flex items-center gap-2 rounded-lg border border-border/50 p-3">
-                    <Checkbox
-                      checked={Boolean(form[p.key])}
-                      onCheckedChange={(v) => setForm((prev) => ({ ...prev, [p.key]: Boolean(v) }))}
-                    />
-                    <span className="text-sm">{p.label}</span>
+              <Label>Penalidade</Label>
+              <div className="mt-2 rounded-lg border border-border/50 p-3">
+                <RadioGroup
+                  value={(penalties.find((p) => Boolean(form[p.key]))?.key ?? "none") as any}
+                  onValueChange={(v) =>
+                    setForm((prev) => {
+                      const next = { ...prev };
+                      penalties.forEach((p) => {
+                        next[p.key] = false;
+                      });
+                      if (v !== "none") next[v as PenaltyKey] = true;
+                      return next;
+                    })
+                  }
+                  className="grid grid-cols-2 md:grid-cols-3 gap-3"
+                >
+                  <label className="flex items-center gap-2 rounded-lg border border-border/50 p-3">
+                    <RadioGroupItem value="none" />
+                    <span className="text-sm">Nenhuma</span>
                   </label>
-                ))}
+                  {penalties.map((p) => (
+                    <label key={p.key} className="flex items-center gap-2 rounded-lg border border-border/50 p-3">
+                      <RadioGroupItem value={p.key} />
+                      <span className="text-sm">{p.label}</span>
+                    </label>
+                  ))}
+                </RadioGroup>
               </div>
             </div>
           </div>

@@ -30,9 +30,18 @@
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
-
+ 
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
+
+    --info: 196 100% 38%;
+    --info-foreground: 0 0% 100%;
+
+    --warning: 24 95% 50%;
+    --warning-foreground: 0 0% 5%;
+
+    --violet: 270 80% 55%;
+    --violet-foreground: 0 0% 100%;
 
     /* CTB category tokens */
     --category-doc: 210 90% 45%;
@@ -96,6 +105,18 @@
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
+
+    --success: 142 76% 46%;
+    --success-foreground: 0 0% 100%;
+
+    --info: 196 100% 45%;
+    --info-foreground: 0 0% 100%;
+
+    --warning: 24 95% 55%;
+    --warning-foreground: 0 0% 5%;
+
+    --violet: 270 80% 65%;
+    --violet-foreground: 0 0% 100%;
 
     /* CTB category tokens */
     --category-doc: 210 90% 55%;
