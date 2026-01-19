@@ -373,11 +373,10 @@ export const MyProfileContent = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-4 font-semibold text-sm">ID</th>
-                      <th className="text-left p-4 font-semibold text-sm">Motorista</th>
-                      <th className="text-left p-4 font-semibold text-sm">Placa</th>
+                      <th className="text-left p-4 font-semibold text-sm">Nº do AIT</th>
                       <th className="text-left p-4 font-semibold text-sm">Data</th>
-                      <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      <th className="text-left p-4 font-semibold text-sm">Viatura</th>
+                      <th className="text-left p-4 font-semibold text-sm">Situação</th>
                       <th className="text-right p-4 font-semibold text-sm">Ações</th>
                     </tr>
                   </thead>
@@ -385,11 +384,10 @@ export const MyProfileContent = () => {
                     {myAITs.map((ait) => (
                       <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
                         <td className="p-4 font-medium">#{ait.numero_ait}</td>
-                        <td className="p-4">{ait.nome_condutor}</td>
-                        <td className="p-4 font-mono">{ait.emplacamento}</td>
                         <td className="p-4 text-muted-foreground">
-                          {new Date(ait.created_at).toLocaleDateString('pt-BR')}
+                          {new Date(ait.created_at).toLocaleString("pt-BR")}
                         </td>
+                        <td className="p-4">{ait.viatura || "-"}</td>
                         <td className="p-4">{getStatusBadge(ait.status)}</td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
@@ -430,7 +428,7 @@ export const MyProfileContent = () => {
                       <th className="text-left p-4 font-semibold text-sm">Função</th>
                       <th className="text-left p-4 font-semibold text-sm">Viatura</th>
                       <th className="text-left p-4 font-semibold text-sm">Duração</th>
-                      <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      <th className="text-left p-4 font-semibold text-sm">Situação</th>
                       <th className="text-right p-4 font-semibold text-sm">Ações</th>
                     </tr>
                   </thead>
@@ -438,7 +436,7 @@ export const MyProfileContent = () => {
                     {myPontos.map((ponto) => (
                       <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
                         <td className="p-4 text-muted-foreground">
-                          {new Date(ponto.data_inicio).toLocaleDateString('pt-BR')}
+                          {new Date(ponto.created_at).toLocaleString("pt-BR")}
                         </td>
                         <td className="p-4 capitalize">{ponto.funcao}</td>
                         <td className="p-4">{ponto.viatura || "-"}</td>
@@ -469,7 +467,7 @@ export const MyProfileContent = () => {
               <div>
                 <h3 className="font-display text-2xl font-bold">AIT #{selectedAIT.numero_ait}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Criado em {new Date(selectedAIT.created_at).toLocaleDateString('pt-BR')}
+                  Criado em {new Date(selectedAIT.created_at).toLocaleString('pt-BR')}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -519,6 +517,65 @@ export const MyProfileContent = () => {
                       {prov}
                     </span>
                   ))}
+                </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data da ocorrência</p>
+                    <p className="font-semibold">
+                      {selectedAIT.data_inicio
+                        ? new Date(selectedAIT.data_inicio).toLocaleString("pt-BR")
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Viatura</p>
+                    <p className="font-semibold">{selectedAIT.viatura || "-"}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Relatório</p>
+                  <p className="bg-background/50 p-3 rounded-lg whitespace-pre-wrap">
+                    {selectedAIT.relatorio?.trim() ? selectedAIT.relatorio : "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Imagens</p>
+                  {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedAIT.imagens.map((imgPath, idx) => {
+                        const imageUrl = imgPath.startsWith("http")
+                          ? imgPath
+                          : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
+
+                        return (
+                          <a
+                            key={idx}
+                            href={imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square rounded-lg overflow-hidden border"
+                          >
+                            <img
+                              src={imageUrl}
+                              alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg";
+                              }}
+                            />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma imagem anexada.</p>
+                  )}
                 </div>
               </div>
             </div>

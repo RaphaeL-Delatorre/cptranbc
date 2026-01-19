@@ -330,13 +330,16 @@ export const useDeletePonto = () => {
 
   return useMutation({
     mutationFn: async (pontoId: string) => {
-      const { error, count } = await supabase
+      const { data, error } = await supabase
         .from("pontos_eletronicos")
-        .delete({ count: "exact" })
-        .eq("id", pontoId);
+        .delete()
+        .eq("id", pontoId)
+        .select("id");
 
       if (error) throw error;
-      if (!count) throw new Error("Não foi possível excluir este ponto (permissão ou registro inexistente).");
+      if (!data || data.length === 0) {
+        throw new Error("Não foi possível excluir este ponto (permissão ou registro inexistente). ");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pontos-eletronicos"] });
