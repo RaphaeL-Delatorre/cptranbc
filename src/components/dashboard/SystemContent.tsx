@@ -38,12 +38,9 @@ const slugify = (value: string) =>
     .trim()
     .replace(/\s+/g, " ");
 
-const buildEmail = (nomeCompleto: string) => {
-  const normalized = slugify(nomeCompleto);
-  const parts = normalized.split(" ").filter(Boolean);
-  const first = parts[0];
-  const last = parts[parts.length - 1];
-  return `${first}.${last}@cptran.gov.br`;
+const buildEmail = (rg: string) => {
+  const clean = rg.trim();
+  return `${clean}@cptran.gov.br`;
 };
 
 export const SystemContent = () => {
@@ -118,8 +115,8 @@ export const SystemContent = () => {
       toast({ title: "Erro", description: rgParsed.error.errors[0]?.message, variant: "destructive" });
       return;
     }
-    if (newUser.password.length < 6) {
-      toast({ title: "Erro", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
+    if (newUser.password.length < 8 || !/[A-Za-z]/.test(newUser.password) || !/\d/.test(newUser.password)) {
+      toast({ title: "Erro", description: "Use uma senha mais forte (mín. 8 caracteres, com letras e números).", variant: "destructive" });
       return;
     }
     if (newUser.password !== newUser.confirm) {
@@ -127,7 +124,7 @@ export const SystemContent = () => {
       return;
     }
 
-    const email = buildEmail(newUser.nome);
+    const email = buildEmail(newUser.rg);
 
     try {
       await createUser.mutateAsync({
@@ -159,8 +156,8 @@ export const SystemContent = () => {
 
   const handleUpdateUserPassword = async () => {
     if (!userPasswordOpenFor) return;
-    if (userNewPassword.length < 6) {
-      toast({ title: "Erro", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
+    if (userNewPassword.length < 8 || !/[A-Za-z]/.test(userNewPassword) || !/\d/.test(userNewPassword)) {
+      toast({ title: "Erro", description: "Use uma senha mais forte (mín. 8 caracteres, com letras e números).", variant: "destructive" });
       return;
     }
     try {
@@ -344,8 +341,8 @@ export const SystemContent = () => {
                 <div className="space-y-2">
                   <Label>Nome e Sobrenome</Label>
                   <Input value={newUser.nome} onChange={(e) => setNewUser({ ...newUser, nome: e.target.value })} placeholder="Nome completo" />
-                  {newUser.nome.trim().length > 0 && (
-                    <p className="text-xs text-muted-foreground">Email: {buildEmail(newUser.nome)}</p>
+                  {newUser.rg.trim().length > 0 && (
+                    <p className="text-xs text-muted-foreground">Email: {buildEmail(newUser.rg)}</p>
                   )}
                 </div>
                 <div className="space-y-2">
