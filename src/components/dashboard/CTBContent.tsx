@@ -311,15 +311,8 @@ const CTBContent = () => {
     const overId = String(over.id);
 
     const byId = new Map(artigos.map((a) => [a.id, a] as const));
-    const activeCat = byId.get(activeId)?.categoria;
-    const overCat = byId.get(overId)?.categoria;
-
-    // Keep ordering per-category (DB column 'ordem' is per category).
-    // If user tries to drag across categories, we ignore the move (no-op).
-    if (activeCat && overCat && activeCat !== overCat) {
-      // no-op
-      return;
-    }
+    const sourceCat = byId.get(activeId)?.categoria;
+    const targetCat = byId.get(overId)?.categoria ?? sourceCat;
 
     const oldIndex = orderedIds.indexOf(activeId);
     const newIndex = orderedIds.indexOf(overId);
@@ -329,11 +322,21 @@ const CTBContent = () => {
     setOrderedIds(next);
 
     try {
-      const categoriaToUpdate = activeCat ?? (categoria ?? "");
-      const idsInCategoria = next.filter((id) => byId.get(id)?.categoria === categoriaToUpdate);
-      if (!categoriaToUpdate || idsInCategoria.length === 0) return;
+      // If moved across categories, update the article category first.
+      if (sourceCat && targetCat && sourceCat !== targetCat) {
+        await updateArticle.mutateAsync({ id: activeId, patch: { categoria: targetCat } });
+      }
 
-      await reorderArticles.mutateAsync({ categoria: categoriaToUpdate, orderedIds: idsInCategoria });
+      // Persist order per category based on how rows appear in the current table.
+      const categoryForId = (id: string) => (id === activeId ? targetCat : byId.get(id)?.categoria);
+      const catsToUpdate = Array.from(new Set([sourceCat, targetCat].filter(Boolean))) as string[];
+
+      await Promise.all(
+        catsToUpdate.map((cat) => {
+          const idsInCat = next.filter((id) => categoryForId(id) === cat);
+          return reorderArticles.mutateAsync({ categoria: cat, orderedIds: idsInCat });
+        })
+      );
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message || "Erro ao reordenar.", variant: "destructive" });
       setOrderedIds(filtered.map((a) => a.id));
