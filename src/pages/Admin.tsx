@@ -1,53 +1,28 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, Eye, EyeOff, User, Loader2, IdCard } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, User, Loader2 } from "lucide-react";
 import logoTransito from "@/assets/logo-transito.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const loginSchema = z.object({
-  rg: z
-    .string()
-    .trim()
-    .regex(/^\d+$/, { message: "RG deve conter apenas números" })
-    .min(1, { message: "Informe o RG" })
-    .max(30, { message: "RG muito longo" }),
+  email: z.string().trim().email({ message: "E-mail inválido" }),
   password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
 });
 
-const signupSchema = z
-  .object({
-    nome: z
-      .string()
-      .trim()
-      .min(3, { message: "Informe Nome e Sobrenome" })
-      .refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, {
-        message: "Informe Nome e Sobrenome",
-      }),
-    rg: z
-      .string()
-      .trim()
-      .regex(/^\d+$/, { message: "RG deve conter apenas números" })
-      .min(1, { message: "Informe o RG" })
-      .max(30, { message: "RG muito longo" }),
-    password: z
-      .string()
-      .min(8, { message: "Senha deve ter pelo menos 8 caracteres" })
-      .regex(/[A-Za-z]/, { message: "Senha deve conter letras" })
-      .regex(/\d/, { message: "Senha deve conter números" }),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "As senhas não coincidem",
-    path: ["confirmPassword"],
-  });
+const signupSchema = loginSchema.extend({
+  nome: z.string().trim().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
+});
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -60,23 +35,17 @@ const Admin = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [credentials, setCredentials] = useState({
-    rg: "",
+    email: "",
     password: "",
     confirmPassword: "",
     nome: "",
   });
 
-  const emailPreview = useMemo(() => {
-    const rg = credentials.rg.trim();
-    if (!rg) return "";
-    return `${rg}@cptran.gov.br`;
-  }, [credentials.rg]);
-
-  // Load saved RG on mount
+  // Load saved email on mount
   useEffect(() => {
-    const savedRg = localStorage.getItem("savedRg");
-    if (savedRg) {
-      setCredentials((prev) => ({ ...prev, rg: savedRg }));
+    const savedEmail = localStorage.getItem("savedEmail");
+    if (savedEmail) {
+      setCredentials(prev => ({ ...prev, email: savedEmail }));
       setRememberMe(true);
     }
   }, []);
@@ -110,29 +79,26 @@ const Admin = () => {
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
-        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
       });
       setErrors(fieldErrors);
       return;
     }
 
     setLoading(true);
-
-    // Save RG if remember me is checked
+    
+    // Save email if remember me is checked
     if (rememberMe) {
-      localStorage.setItem("savedRg", credentials.rg);
+      localStorage.setItem("savedEmail", credentials.email);
     } else {
-      localStorage.removeItem("savedRg");
+      localStorage.removeItem("savedEmail");
     }
-
-    try {
-      const email = `${credentials.rg.trim()}@cptran.gov.br`;
-      await signIn(email, credentials.password);
-    } catch (err: any) {
-      toast({ title: "Erro", description: err.message || "Erro ao fazer login.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    
+    const { error } = await signIn(credentials.email, credentials.password);
+    setLoading(false);
+    // Redirect will be handled by the useEffect above
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -143,25 +109,21 @@ const Admin = () => {
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
-        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
       });
       setErrors(fieldErrors);
       return;
     }
 
-    const email = `${credentials.rg.trim()}@cptran.gov.br`;
-
     setLoading(true);
-    try {
-      const { error } = await signUp(email, credentials.password, credentials.nome, credentials.rg);
-      if (!error) {
-        setIsSignUp(false);
-        setCredentials({ rg: credentials.rg, password: "", confirmPassword: "", nome: "" });
-      }
-    } catch (err: any) {
-      toast({ title: "Erro", description: err.message || "Erro ao criar conta.", variant: "destructive" });
-    } finally {
-      setLoading(false);
+    const { error } = await signUp(credentials.email, credentials.password, credentials.nome);
+    setLoading(false);
+
+    if (!error) {
+      setIsSignUp(false);
+      setCredentials({ email: credentials.email, password: "", confirmPassword: "", nome: "" });
     }
   };
 
@@ -196,39 +158,36 @@ const Admin = () => {
           <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="nome">Nome e Sobrenome</Label>
+                <Label htmlFor="nome">Nome Completo</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="nome"
                     type="text"
-                    placeholder="Ex.: Rafael Delatorre"
+                    placeholder="Seu nome completo"
                     className="pl-10"
                     value={credentials.nome}
                     onChange={(e) => setCredentials({ ...credentials, nome: e.target.value })}
                   />
                 </div>
-                {emailPreview && (
-                  <p className="text-xs text-muted-foreground">Email: {emailPreview}</p>
-                )}
                 {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="rg">RG</Label>
+              <Label htmlFor="email">E-mail</Label>
               <div className="relative">
-                <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  id="rg"
-                  inputMode="numeric"
-                  placeholder="Somente números"
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
                   className="pl-10"
-                  value={credentials.rg}
-                  onChange={(e) => setCredentials({ ...credentials, rg: e.target.value })}
+                  value={credentials.email}
+                  onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                 />
               </div>
-              {errors.rg && <p className="text-xs text-destructive">{errors.rg}</p>}
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
@@ -274,13 +233,13 @@ const Admin = () => {
 
             {!isSignUp && (
               <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="rememberMe"
+                <Checkbox 
+                  id="rememberMe" 
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                 />
                 <Label htmlFor="rememberMe" className="text-sm cursor-pointer">
-                  Lembrar meu RG
+                  Lembrar meu e-mail
                 </Label>
               </div>
             )}

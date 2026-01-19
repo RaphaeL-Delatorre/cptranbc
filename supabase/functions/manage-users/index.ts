@@ -58,14 +58,14 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "create": {
-        const { email, password, nome, role, rg, cargoId } = payload;
+        const { email, password, nome, role } = payload;
 
         // Create user using admin API
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
           email_confirm: true,
-          user_metadata: { nome, rg: rg ?? "" },
+          user_metadata: { nome },
         });
 
         if (createError) {
@@ -77,12 +77,9 @@ Deno.serve(async (req) => {
 
         // Assign role if specified
         if (role && newUser.user) {
-          await supabaseAdmin.from("user_roles").insert({ user_id: newUser.user.id, role });
-        }
-
-        // Assign cargo if specified
-        if (cargoId && newUser.user) {
-          await supabaseAdmin.from("usuario_cargos").insert({ user_id: newUser.user.id, cargo_id: cargoId });
+          await supabaseAdmin
+            .from("user_roles")
+            .insert({ user_id: newUser.user.id, role });
         }
 
         return new Response(JSON.stringify({ user: newUser.user }), {
@@ -101,14 +98,17 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Delete role mappings
-        await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-
-        // Delete cargo mappings
-        await supabaseAdmin.from("usuario_cargos").delete().eq("user_id", userId);
+        // Delete user roles first
+        await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId);
 
         // Delete profile
-        await supabaseAdmin.from("profiles").delete().eq("user_id", userId);
+        await supabaseAdmin
+          .from("profiles")
+          .delete()
+          .eq("user_id", userId);
 
         // Delete user
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
