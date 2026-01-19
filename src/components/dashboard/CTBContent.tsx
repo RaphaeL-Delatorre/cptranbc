@@ -310,10 +310,6 @@ const CTBContent = () => {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    const byId = new Map(artigos.map((a) => [a.id, a] as const));
-    const sourceCat = byId.get(activeId)?.categoria;
-    const targetCat = byId.get(overId)?.categoria ?? sourceCat;
-
     const oldIndex = orderedIds.indexOf(activeId);
     const newIndex = orderedIds.indexOf(overId);
     if (oldIndex < 0 || newIndex < 0) return;
@@ -322,21 +318,16 @@ const CTBContent = () => {
     setOrderedIds(next);
 
     try {
-      // If moved across categories, update the article category first.
+      // If dropped on a row of another category, move the article to that category.
+      const byId = new Map(artigos.map((a) => [a.id, a] as const));
+      const sourceCat = byId.get(activeId)?.categoria;
+      const targetCat = byId.get(overId)?.categoria;
       if (sourceCat && targetCat && sourceCat !== targetCat) {
         await updateArticle.mutateAsync({ id: activeId, patch: { categoria: targetCat } });
       }
 
-      // Persist order per category based on how rows appear in the current table.
-      const categoryForId = (id: string) => (id === activeId ? targetCat : byId.get(id)?.categoria);
-      const catsToUpdate = Array.from(new Set([sourceCat, targetCat].filter(Boolean))) as string[];
-
-      await Promise.all(
-        catsToUpdate.map((cat) => {
-          const idsInCat = next.filter((id) => categoryForId(id) === cat);
-          return reorderArticles.mutateAsync({ categoria: cat, orderedIds: idsInCat });
-        })
-      );
+      // Persist global ordering
+      await reorderArticles.mutateAsync({ orderedIds: next });
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message || "Erro ao reordenar.", variant: "destructive" });
       setOrderedIds(filtered.map((a) => a.id));
@@ -418,7 +409,7 @@ const CTBContent = () => {
             </div>
             {isAdmin && (
               <p className="text-xs text-muted-foreground">
-                Dica: você pode arrastar e soltar para ordenar (a ordem é salva por categoria).
+                Dica: você pode arrastar e soltar para ordenar (ordem única para todos os artigos).
               </p>
             )}
           </div>
