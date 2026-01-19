@@ -75,6 +75,18 @@ export default {
 				DEFAULT: 'hsl(var(--success))',
 				foreground: 'hsl(var(--success-foreground))'
 			},
+			info: {
+				DEFAULT: 'hsl(var(--info))',
+				foreground: 'hsl(var(--info-foreground))'
+			},
+			warning: {
+				DEFAULT: 'hsl(var(--warning))',
+				foreground: 'hsl(var(--warning-foreground))'
+			},
+			violet: {
+				DEFAULT: 'hsl(var(--violet))',
+				foreground: 'hsl(var(--violet-foreground))'
+			},
 			category: {
 				doc: 'hsl(var(--category-doc))',
 				est: 'hsl(var(--category-est))',
