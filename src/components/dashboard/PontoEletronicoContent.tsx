@@ -9,6 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ListPagination } from "@/components/common/ListPagination";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -80,6 +90,10 @@ export const PontoEletronicoContent = () => {
   const [selectedPonto, setSelectedPonto] = useState<PontoEletronico | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<PontoEletronico | null>(null);
   const [motivoRecusa, setMotivoRecusa] = useState("");
+
+  // Proteção extra para "Deletar todos"
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllPhrase, setDeleteAllPhrase] = useState("");
 
   // Filters
   const [dateStart, setDateStart] = useState<string>("");
@@ -279,33 +293,76 @@ export const PontoEletronicoContent = () => {
 
         <div className="flex gap-2 items-center flex-wrap">
           {canManagePonto && (
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                if (
-                  confirm(
-                    "Tem certeza que deseja DELETAR TODOS os pontos? Esta ação não pode ser desfeita."
-                  )
-                ) {
-                  try {
-                    await deleteAllPontos.mutateAsync();
-                    toast({ title: "Pontos deletados", description: "Todos os pontos foram removidos." });
-                  } catch (error: any) {
-                    toast({
-                      title: "Erro",
-                      description: error?.message || "Erro ao deletar pontos.",
-                      variant: "destructive",
-                    });
-                  }
-                }
-              }}
-              disabled={deleteAllPontos.isPending}
-              className="gap-2"
-            >
-              {deleteAllPontos.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Trash2 className="h-4 w-4" />
-              Deletar todos
-            </Button>
+            <>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setDeleteAllPhrase("");
+                  setDeleteAllOpen(true);
+                }}
+                disabled={deleteAllPontos.isPending}
+                className="gap-2"
+              >
+                {deleteAllPontos.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                <Trash2 className="h-4 w-4" />
+                Deletar todos
+              </Button>
+
+              <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Deletar todos os pontos?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação é irreversível. Para confirmar, digite <strong>DELETAR</strong> abaixo.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-2">
+                    <Input
+                      value={deleteAllPhrase}
+                      onChange={(e) => setDeleteAllPhrase(e.target.value)}
+                      placeholder='Digite "DELETAR"'
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Dica: você só conseguirá confirmar quando a frase estiver correta.
+                    </p>
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel
+                      onClick={() => {
+                        setDeleteAllOpen(false);
+                        setDeleteAllPhrase("");
+                      }}
+                    >
+                      Cancelar
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (deleteAllPhrase.trim().toUpperCase() !== "DELETAR") return;
+                        try {
+                          await deleteAllPontos.mutateAsync();
+                          toast({ title: "Pontos deletados", description: "Todos os pontos foram removidos." });
+                          setDeleteAllOpen(false);
+                          setDeleteAllPhrase("");
+                        } catch (error: any) {
+                          toast({
+                            title: "Erro",
+                            description: error?.message || "Erro ao deletar pontos.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={deleteAllPhrase.trim().toUpperCase() !== "DELETAR" || deleteAllPontos.isPending}
+                    >
+                      Confirmar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
 
           <Button

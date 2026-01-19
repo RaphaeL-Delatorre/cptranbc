@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, User, Clock, Play, Pause, Square, LogIn, Loader2, Car, FileText } from "lucide-react";
+import { ChevronRight, ChevronLeft, User, Clock, Play, Pause, Square, LogIn, Loader2, Car, FileText, Eye, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreatePonto, usePausePonto, useResumePonto, useFinalizePonto, usePontoPendente, useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
 import { useViaturas } from "@/hooks/useViaturas";
@@ -25,6 +25,7 @@ const BatePonto = () => {
   const { user, loading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [showMeusPontos, setShowMeusPontos] = useState(false);
+  const [selectedPonto, setSelectedPonto] = useState<PontoEletronico | null>(null);
   const [formData, setFormData] = useState({
     funcao: "",
     viatura: "",
@@ -276,6 +277,8 @@ const BatePonto = () => {
                         <th className="text-left p-4 font-semibold text-sm">Viatura</th>
                         <th className="text-left p-4 font-semibold text-sm">Duração</th>
                         <th className="text-left p-4 font-semibold text-sm">Situação</th>
+                        <th className="text-left p-4 font-semibold text-sm">Responsável</th>
+                        <th className="text-right p-4 font-semibold text-sm">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -285,11 +288,12 @@ const BatePonto = () => {
                           <td className="p-4">{funcoesViatura.find(f => f.value === ponto.funcao)?.label || ponto.funcao}</td>
                           <td className="p-4">{ponto.viatura || "-"}</td>
                           <td className="p-4 font-mono">{formatDuration(ponto.tempo_total_segundos || 0)}</td>
-                          <td className="p-4">
-                            {getStatusBadge(ponto.status)}
-                            {ponto.status === "recusado" && ponto.motivo_recusa && (
-                              <p className="text-xs text-destructive mt-1">Motivo: {ponto.motivo_recusa}</p>
-                            )}
+                          <td className="p-4">{getStatusBadge(ponto.status)}</td>
+                          <td className="p-4 text-sm">{ponto.aprovador_nome || "-"}</td>
+                          <td className="p-4 text-right">
+                            <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(ponto)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -298,6 +302,127 @@ const BatePonto = () => {
                 </div>
               )}
             </div>
+
+            {selectedPonto && (
+              <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="font-display text-2xl font-bold">Detalhes do Ponto</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Iniciado em {new Date(selectedPonto.data_inicio).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(selectedPonto.status)}
+                      <Button size="icon" variant="ghost" onClick={() => setSelectedPonto(null)}>
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg">Policial</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Nome</p>
+                          <p className="font-semibold">{selectedPonto.nome_policial || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Patente</p>
+                          <p className="font-semibold">{selectedPonto.patente || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Função</p>
+                          <p className="font-semibold">
+                            {funcoesViatura.find((f) => f.value === selectedPonto.funcao)?.label || selectedPonto.funcao}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg">Serviço</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Viatura</p>
+                          <p className="font-semibold">{selectedPonto.viatura || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Ponto Discord</p>
+                          <p className="font-semibold">{selectedPonto.ponto_discord || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Início</p>
+                          <p className="font-semibold">{new Date(selectedPonto.data_inicio).toLocaleString("pt-BR")}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Fim</p>
+                          <p className="font-semibold">
+                            {selectedPonto.data_fim ? new Date(selectedPonto.data_fim).toLocaleString("pt-BR") : "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-muted-foreground">Duração Total</p>
+                        <p className="font-semibold text-xl font-mono">
+                          {formatDuration(selectedPonto.tempo_total_segundos || 0)}
+                        </p>
+                      </div>
+
+                      {selectedPonto.observacao && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Observação</p>
+                          <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.observacao}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {(selectedPonto.aprovador_nome || selectedPonto.motivo_recusa) && (
+                      <div
+                        className={`rounded-xl p-5 space-y-4 ${
+                          selectedPonto.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
+                        }`}
+                      >
+                        <h4
+                          className={`font-semibold text-lg ${
+                            selectedPonto.status === "recusado" ? "text-destructive" : "text-success"
+                          }`}
+                        >
+                          {selectedPonto.status === "aprovado" ? "Aprovação" : "Reprovação"}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {selectedPonto.aprovador_nome && (
+                            <div>
+                              <p className="text-sm text-muted-foreground">
+                                {selectedPonto.status === "aprovado" ? "Aprovado por" : "Recusado por"}
+                              </p>
+                              <p className="font-semibold">{selectedPonto.aprovador_nome}</p>
+                            </div>
+                          )}
+                          {selectedPonto.data_aprovacao && (
+                            <div>
+                              <p className="text-sm text-muted-foreground">Data</p>
+                              <p className="font-semibold">
+                                {new Date(selectedPonto.data_aprovacao).toLocaleString("pt-BR")}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {selectedPonto.motivo_recusa && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Motivo</p>
+                            <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.motivo_recusa}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </MainLayout>
