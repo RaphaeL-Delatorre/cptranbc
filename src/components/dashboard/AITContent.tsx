@@ -3,6 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -91,6 +101,10 @@ export const AITContent = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
 
+  // Proteção extra para "Deletar todos"
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllPhrase, setDeleteAllPhrase] = useState("");
+
   // Filters
   const [dateStart, setDateStart] = useState<string>("");
   const [dateEnd, setDateEnd] = useState<string>("");
@@ -102,7 +116,6 @@ export const AITContent = () => {
   // Pagination
   const [page, setPage] = useState<number>(1);
   const [perPage, setPerPage] = useState<PerPage>(10);
-
 
   const userRole =
     userRoles.find((r) => r.role === "admin")?.role === "admin"
@@ -147,7 +160,7 @@ export const AITContent = () => {
         if (endDate && aitDateOnly > endDate) return false;
       }
 
-      // Search filter (nome, prefixo/viatura, placa, etc.)
+      // Search filter
       if (!term) return true;
       const haystack = [
         ait.nome_agente,
@@ -308,33 +321,76 @@ export const AITContent = () => {
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           {userRole === "admin" && (
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                if (
-                  confirm(
-                    "Tem certeza que deseja DELETAR TODOS os AITs? Esta ação não pode ser desfeita."
-                  )
-                ) {
-                  try {
-                    await deleteAllAITs.mutateAsync();
-                    toast({ title: "AITs deletados", description: "Todos os AITs foram removidos." });
-                  } catch (error: any) {
-                    toast({
-                      title: "Erro",
-                      description: error?.message || "Erro ao deletar AITs.",
-                      variant: "destructive",
-                    });
-                  }
-                }
-              }}
-              disabled={deleteAllAITs.isPending}
-              className="gap-2"
-            >
-              {deleteAllAITs.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Trash2 className="h-4 w-4" />
-              Deletar todos
-            </Button>
+            <>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setDeleteAllPhrase("");
+                  setDeleteAllOpen(true);
+                }}
+                disabled={deleteAllAITs.isPending}
+                className="gap-2"
+              >
+                {deleteAllAITs.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                <Trash2 className="h-4 w-4" />
+                Deletar todos
+              </Button>
+
+              <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Deletar todos os AITs?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação é irreversível. Para confirmar, digite <strong>DELETAR</strong> abaixo.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-2">
+                    <Input
+                      value={deleteAllPhrase}
+                      onChange={(e) => setDeleteAllPhrase(e.target.value)}
+                      placeholder='Digite "DELETAR"'
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Dica: você só conseguirá confirmar quando a frase estiver correta.
+                    </p>
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel
+                      onClick={() => {
+                        setDeleteAllOpen(false);
+                        setDeleteAllPhrase("");
+                      }}
+                    >
+                      Cancelar
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (deleteAllPhrase.trim().toUpperCase() !== "DELETAR") return;
+                        try {
+                          await deleteAllAITs.mutateAsync();
+                          toast({ title: "AITs deletados", description: "Todos os AITs foram removidos." });
+                          setDeleteAllOpen(false);
+                          setDeleteAllPhrase("");
+                        } catch (error: any) {
+                          toast({
+                            title: "Erro",
+                            description: error?.message || "Erro ao deletar AITs.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={deleteAllPhrase.trim().toUpperCase() !== "DELETAR" || deleteAllAITs.isPending}
+                    >
+                      Confirmar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
           <Button
             variant="outline"
