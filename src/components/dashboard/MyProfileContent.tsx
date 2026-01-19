@@ -1,62 +1,52 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useAITs, type AIT } from "@/hooks/useAITs";
 import { useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
 import { useUserCargosPermissoes } from "@/hooks/useCargosPermissoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  User, 
-  Mail, 
-  Key, 
-  FileText, 
+import {
+  User,
+  Mail,
+  Key,
+  Shield,
+  Clock,
   Eye,
   Check,
   X,
   Loader2,
   Edit,
   Save,
-  Download,
   Search,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
 } from "lucide-react";
-import { exportAITToPDF } from "@/utils/pdfExport";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-
 type ProfileTab = "cargos" | "permissoes" | "pontos";
 
 export const MyProfileContent = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { data: aits = [], isLoading: aitsLoading } = useAITs();
   const { data: pontos = [], isLoading: pontosLoading } = useMeusPontos();
   const { data: cargosPerms, isLoading: cargosPermsLoading } = useUserCargosPermissoes(user?.id);
-  
+
   const [profileTab, setProfileTab] = useState<ProfileTab>("cargos");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileData, setProfileData] = useState({
     nome: "",
-    email: user?.email || ""
+    email: user?.email || "",
   });
   const [passwordData, setPasswordData] = useState({
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
   const [saving, setSaving] = useState(false);
-  const [selectedAIT, setSelectedAIT] = useState<AIT | null>(null);
   const [selectedPonto, setSelectedPonto] = useState<PontoEletronico | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "aprovado" | "recusado">("todos");
+  const [statusFilter, setStatusFilter] = useState<
+    "todos" | "ativo" | "pausado" | "finalizado" | "pendente" | "aprovado" | "recusado"
+  >("todos");
 
   // Load profile data
   useEffect(() => {
@@ -85,19 +75,6 @@ export const MyProfileContent = () => {
     return (
       ponto.nome_policial?.toLowerCase().includes(term) ||
       ponto.viatura?.toLowerCase().includes(term)
-    );
-  });
-
-  // Filter AITs created by this user
-  const myAITs = aits.filter(ait => {
-    if (ait.agente_id !== user?.id) return false;
-    if (statusFilter !== "todos" && ait.status !== statusFilter) return false;
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      ait.nome_condutor.toLowerCase().includes(term) ||
-      ait.emplacamento.toLowerCase().includes(term) ||
-      ait.numero_ait.toString().includes(term)
     );
   });
 
@@ -166,6 +143,12 @@ export const MyProfileContent = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "ativo":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Ativo</span>;
+      case "pausado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-secondary/20 text-secondary">Pausado</span>;
+      case "finalizado":
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted/50 text-foreground">Finalizado</span>;
       case "pendente":
         return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">Pendente</span>;
       case "aprovado":
@@ -300,108 +283,143 @@ export const MyProfileContent = () => {
         )}
       </div>
 
-      {/* My AITs & Pontos Section */}
+      {/* Cargo, Permissões & Pontos */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              {profileTab === "aits" ? <FileText className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-primary" />}
+              {profileTab === "pontos" ? (
+                <Clock className="h-5 w-5 text-primary" />
+              ) : (
+                <Shield className="h-5 w-5 text-primary" />
+              )}
             </div>
             <div>
               <h3 className="font-display text-lg font-bold">
-                {profileTab === "aits" ? "Meus AITs" : "Meus Pontos"}
+                {profileTab === "cargos" && "Meu Cargo"}
+                {profileTab === "permissoes" && "Minhas Permissões"}
+                {profileTab === "pontos" && "Meus Pontos"}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {profileTab === "aits" ? "Histórico de AITs" : "Histórico de Pontos Eletrônicos"}
+                {profileTab === "cargos" && "Cargos atribuídos ao seu usuário"}
+                {profileTab === "permissoes" && "Permissões efetivas a partir dos seus cargos"}
+                {profileTab === "pontos" && "Histórico de Pontos Eletrônicos"}
               </p>
             </div>
           </div>
+
           <div className="flex gap-2 items-center flex-wrap">
             <div className="flex gap-1">
-              <Button 
-                variant={profileTab === "aits" ? "default" : "outline"} 
+              <Button
+                variant={profileTab === "cargos" ? "default" : "outline"}
                 size="sm"
-                onClick={() => { setProfileTab("aits"); setSearchTerm(""); setStatusFilter("todos"); }}
+                onClick={() => setProfileTab("cargos")}
               >
-                <FileText className="h-4 w-4 mr-1" />
-                AITs
+                <Shield className="h-4 w-4 mr-1" />
+                Cargo
               </Button>
-              <Button 
-                variant={profileTab === "pontos" ? "default" : "outline"} 
+              <Button
+                variant={profileTab === "permissoes" ? "default" : "outline"}
                 size="sm"
-                onClick={() => { setProfileTab("pontos"); setSearchTerm(""); setStatusFilter("todos"); }}
+                onClick={() => setProfileTab("permissoes")}
+              >
+                <Key className="h-4 w-4 mr-1" />
+                Permissões
+              </Button>
+              <Button
+                variant={profileTab === "pontos" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setProfileTab("pontos");
+                  setSearchTerm("");
+                  setStatusFilter("todos");
+                }}
               >
                 <Clock className="h-4 w-4 mr-1" />
                 Pontos
               </Button>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar..." 
-                className="pl-9 w-48" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="pendente">Pendentes</SelectItem>
-                <SelectItem value="aprovado">Aprovados</SelectItem>
-                <SelectItem value="recusado">Recusados</SelectItem>
-              </SelectContent>
-            </Select>
+
+            {profileTab === "pontos" && (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar..."
+                    className="pl-9 w-48"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <Select value={statusFilter} onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="pausado">Pausado</SelectItem>
+                    <SelectItem value="finalizado">Finalizado</SelectItem>
+                    <SelectItem value="pendente">Pendentes</SelectItem>
+                    <SelectItem value="aprovado">Aprovados</SelectItem>
+                    <SelectItem value="recusado">Recusados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         </div>
 
-        {/* AITs Tab */}
-        {profileTab === "aits" && (
+        {/* Cargos Tab */}
+        {profileTab === "cargos" && (
           <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
-            {aitsLoading ? (
+            {cargosPermsLoading ? (
               <div className="p-8 text-center">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
               </div>
-            ) : myAITs.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                {searchTerm ? "Nenhum AIT encontrado." : "Você ainda não criou nenhum AIT."}
+            ) : (cargosPerms?.cargos?.length ?? 0) === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">Nenhum cargo atribuído.</div>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {cargosPerms!.cargos.map((cargo) => (
+                  <div key={cargo.id} className="p-4 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-semibold">{cargo.nome}</div>
+                      {cargo.descricao && <div className="text-sm text-muted-foreground">{cargo.descricao}</div>}
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Permissões Tab */}
+        {profileTab === "permissoes" && (
+          <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+            {cargosPermsLoading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : (cargosPerms?.permissoes?.length ?? 0) === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">Nenhuma permissão encontrada.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-4 font-semibold text-sm">Nº do AIT</th>
-                      <th className="text-left p-4 font-semibold text-sm">Data</th>
-                      <th className="text-left p-4 font-semibold text-sm">Viatura</th>
-                      <th className="text-left p-4 font-semibold text-sm">Situação</th>
-                      <th className="text-left p-4 font-semibold text-sm">Responsável</th>
-                      <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                      <th className="text-left p-4 font-semibold text-sm">Categoria</th>
+                      <th className="text-left p-4 font-semibold text-sm">Permissão</th>
+                      <th className="text-left p-4 font-semibold text-sm">Código</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {myAITs.map((ait) => (
-                      <tr key={ait.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="p-4 font-medium">#{ait.numero_ait}</td>
-                        <td className="p-4 text-muted-foreground">
-                          {new Date(ait.created_at).toLocaleString("pt-BR")}
-                        </td>
-                        <td className="p-4">{ait.viatura || "-"}</td>
-                        <td className="p-4">{getStatusBadge(ait.status)}</td>
-                        <td className="p-4 text-sm">{ait.aprovador_nome || "-"}</td>
-                        <td className="p-4 text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(ait)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => exportAITToPDF(ait)}>
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
+                    {cargosPerms!.permissoes.map((p) => (
+                      <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4 text-muted-foreground">{p.categoria}</td>
+                        <td className="p-4 font-medium">{p.nome}</td>
+                        <td className="p-4 font-mono text-sm text-muted-foreground">{p.codigo}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -439,9 +457,7 @@ export const MyProfileContent = () => {
                   <tbody className="divide-y divide-border/50">
                     {myPontos.map((ponto) => (
                       <tr key={ponto.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="p-4 text-muted-foreground">
-                          {new Date(ponto.created_at).toLocaleString("pt-BR")}
-                        </td>
+                        <td className="p-4 text-muted-foreground">{new Date(ponto.created_at).toLocaleString("pt-BR")}</td>
                         <td className="p-4 capitalize">{ponto.funcao}</td>
                         <td className="p-4">{ponto.viatura || "-"}</td>
                         <td className="p-4 font-mono">
@@ -463,233 +479,6 @@ export const MyProfileContent = () => {
           </div>
         )}
       </div>
-
-      {/* AIT Detail Modal (mesmo padrão do Dashboard) */}
-      {selectedAIT && (
-        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-display text-2xl font-bold">AIT #{selectedAIT.numero_ait}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Criado em {new Date(selectedAIT.created_at).toLocaleString("pt-BR")}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {getStatusBadge(selectedAIT.status)}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => exportAITToPDF(selectedAIT)}
-                  title="Exportar PDF"
-                >
-                  <Download className="h-5 w-5" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => setSelectedAIT(null)}>
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Policial Responsável
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Graduação</p>
-                    <p className="font-semibold">{selectedAIT.graduacao}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Nome</p>
-                    <p className="font-semibold">{selectedAIT.nome_agente}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg">Viatura e Equipe</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Viatura</p>
-                    <p className="font-semibold">{selectedAIT.viatura}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Motorista</p>
-                    <p className="font-semibold">{selectedAIT.primeiro_homem}</p>
-                  </div>
-                  {selectedAIT.segundo_homem && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Encarregado</p>
-                      <p className="font-semibold">{selectedAIT.segundo_homem}</p>
-                    </div>
-                  )}
-                  {selectedAIT.terceiro_homem && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">3º Homem</p>
-                      <p className="font-semibold">{selectedAIT.terceiro_homem}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg">Veículo e Envolvidos</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Placa</p>
-                    <p className="font-semibold font-mono">{selectedAIT.emplacamento}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Modelo</p>
-                    <p className="font-semibold">{selectedAIT.marca_modelo}</p>
-                  </div>
-                  {selectedAIT.nome_condutor && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Motorista</p>
-                      <p className="font-semibold">{selectedAIT.nome_condutor}</p>
-                    </div>
-                  )}
-                  {selectedAIT.nome_proprietario && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Proprietário</p>
-                      <p className="font-semibold">{selectedAIT.nome_proprietario}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg">Infrações e Providências</h4>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Artigos Infringidos</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedAIT.artigos_infringidos?.map((art) => (
-                        <span key={art} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
-                          {art}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Providências</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedAIT.providencias_tomadas?.map((prov) => (
-                        <span key={prov} className="px-3 py-1 bg-secondary/10 text-secondary rounded-lg text-sm font-medium">
-                          {prov}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {(selectedAIT.aprovador_nome || selectedAIT.motivo_recusa) && (
-                <div
-                  className={`rounded-xl p-5 space-y-4 ${
-                    selectedAIT.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
-                  }`}
-                >
-                  <h4
-                    className={`font-semibold text-lg ${
-                      selectedAIT.status === "recusado" ? "text-destructive" : "text-success"
-                    }`}
-                  >
-                    {selectedAIT.status === "aprovado" ? "Aprovação" : "Reprovação"}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedAIT.aprovador_nome && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedAIT.status === "aprovado" ? "Aprovado por" : "Reprovado por"}
-                        </p>
-                        <p className="font-semibold">{selectedAIT.aprovador_nome}</p>
-                      </div>
-                    )}
-                    {selectedAIT.data_aprovacao && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Data</p>
-                        <p className="font-semibold">{new Date(selectedAIT.data_aprovacao).toLocaleString("pt-BR")}</p>
-                      </div>
-                    )}
-                  </div>
-                  {selectedAIT.motivo_recusa && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Motivo</p>
-                      <p className="bg-background/50 p-3 rounded-lg">{selectedAIT.motivo_recusa}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="bg-muted/30 rounded-xl p-5 space-y-4">
-                <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Imagens, Data e Relatório
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Data da ocorrência</p>
-                    <p className="font-semibold">
-                      {selectedAIT.data_inicio ? new Date(selectedAIT.data_inicio).toLocaleString("pt-BR") : "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Criado em</p>
-                    <p className="font-semibold">{new Date(selectedAIT.created_at).toLocaleString("pt-BR")}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Relatório</p>
-                  <p className="bg-background/50 p-3 rounded-lg whitespace-pre-wrap">
-                    {selectedAIT.relatorio?.trim() ? selectedAIT.relatorio : "-"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Imagens</p>
-                  {selectedAIT.imagens && selectedAIT.imagens.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {selectedAIT.imagens.map((imgPath, idx) => {
-                        const imageUrl = imgPath.startsWith("http")
-                          ? imgPath
-                          : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
-
-                        return (
-                          <a
-                            key={idx}
-                            href={imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-square rounded-lg overflow-hidden border"
-                          >
-                            <img
-                              src={imageUrl}
-                              alt={`Imagem do AIT #${selectedAIT.numero_ait} (${idx + 1})`}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              onError={(e) => {
-                                e.currentTarget.src = "/placeholder.svg";
-                              }}
-                            />
-                          </a>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Nenhuma imagem anexada.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Ponto Detail Modal (mesmo padrão do Dashboard) */}
       {selectedPonto && (
