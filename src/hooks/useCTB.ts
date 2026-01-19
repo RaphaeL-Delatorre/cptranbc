@@ -17,11 +17,12 @@ export type CTBArticle = {
   updated_at: string;
 };
 
-export type CTBArticleInsert = Omit<CTBArticle, "id" | "created_at" | "updated_at"> & {
+export type CTBArticleInsert = Omit<CTBArticle, "id" | "created_at" | "updated_at" | "ordem"> & {
   created_by?: string | null;
+  ordem?: number;
 };
 
-export type CTBArticleUpdate = Partial<CTBArticleInsert>;
+export type CTBArticleUpdate = Partial<CTBArticleInsert> & { ordem?: number };
 
 export const useCTBArticles = () => {
   return useQuery({
@@ -30,8 +31,8 @@ export const useCTBArticles = () => {
       const { data, error } = await supabase
         .from("ctb_artigos")
         .select("*")
-        .order("categoria", { ascending: true })
         .order("ordem", { ascending: true })
+        .order("categoria", { ascending: true })
         .order("artigo", { ascending: true });
 
       if (error) throw error;
@@ -47,9 +48,19 @@ export const useCreateCTBArticle = () => {
       const { data: auth } = await supabase.auth.getUser();
       const created_by = auth.user?.id ?? null;
 
+      // Append new articles to the end of the global ordering
+      const { data: last, error: lastErr } = await supabase
+        .from("ctb_artigos")
+        .select("ordem")
+        .order("ordem", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastErr) throw lastErr;
+      const ordem = (last?.ordem ?? -1) + 1;
+
       const { data, error } = await supabase
         .from("ctb_artigos")
-        .insert({ ...payload, created_by })
+        .insert({ ...payload, created_by, ordem })
         .select("*")
         .single();
 
@@ -98,15 +109,14 @@ export const useDeleteCTBArticle = () => {
 export const useReorderCTBArticles = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ categoria, orderedIds }: { categoria: string; orderedIds: string[] }) => {
-      // Update ordem sequentially within the given category.
+    mutationFn: async ({ orderedIds }: { orderedIds: string[] }) => {
+      // Update ordem sequentially for the whole list (global ordering)
       const results = await Promise.all(
         orderedIds.map((id, idx) =>
           supabase
             .from("ctb_artigos")
             .update({ ordem: idx })
             .eq("id", id)
-            .eq("categoria", categoria)
         )
       );
 
