@@ -318,15 +318,7 @@ const CTBContent = () => {
     setOrderedIds(next);
 
     try {
-      // If dropped on a row of another category, move the article to that category.
-      const byId = new Map(artigos.map((a) => [a.id, a] as const));
-      const sourceCat = byId.get(activeId)?.categoria;
-      const targetCat = byId.get(overId)?.categoria;
-      if (sourceCat && targetCat && sourceCat !== targetCat) {
-        await updateArticle.mutateAsync({ id: activeId, patch: { categoria: targetCat } });
-      }
-
-      // Persist global ordering
+      // Reordering is global and does NOT change an article's category.
       await reorderArticles.mutateAsync({ orderedIds: next });
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message || "Erro ao reordenar.", variant: "destructive" });

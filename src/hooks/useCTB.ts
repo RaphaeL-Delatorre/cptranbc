@@ -31,9 +31,7 @@ export const useCTBArticles = () => {
       const { data, error } = await supabase
         .from("ctb_artigos")
         .select("*")
-        .order("ordem", { ascending: true })
-        .order("categoria", { ascending: true })
-        .order("artigo", { ascending: true });
+        .order("ordem", { ascending: true });
 
       if (error) throw error;
       return (data ?? []) as CTBArticle[];
