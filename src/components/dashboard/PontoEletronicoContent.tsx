@@ -32,6 +32,7 @@ import {
 } from "@/hooks/usePontoEletronico";
 import { useAuth } from "@/hooks/useAuth";
 import { useHasPermission } from "@/hooks/usePermissions";
+import { useIsAdminOrModerador } from "@/hooks/useRoles";
 import { exportPontosToCSV, exportPontosToExcel } from "@/utils/pontoExport";
 import { exportPontosToPDF } from "@/utils/pontoPdfExport";
 import {
@@ -84,7 +85,9 @@ export const PontoEletronicoContent = () => {
   const deletePonto = useDeletePonto();
   const deleteAllPontos = useDeleteAllPontos();
 
-  const { data: canManagePonto = false } = useHasPermission("gerenciar_ponto", user?.id);
+  const { data: canManagePermission = false } = useHasPermission("gerenciar_ponto", user?.id);
+  const { hasRole: isAdminOrModerador } = useIsAdminOrModerador(user?.id);
+  const canManagePonto = canManagePermission || isAdminOrModerador;
 
   const [activeTab, setActiveTab] = useState<TabType>("pendentes");
   const [selectedPonto, setSelectedPonto] = useState<PontoEletronico | null>(null);

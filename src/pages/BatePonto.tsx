@@ -5,10 +5,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, User, Clock, Play, Pause, Square, LogIn, Loader2, Car, FileText, Eye, X } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronLeft,
+  User,
+  Clock,
+  Play,
+  Pause,
+  Square,
+  LogIn,
+  Loader2,
+  Car,
+  FileText,
+  Eye,
+  X,
+  Trash2,
+  Check,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreatePonto, usePausePonto, useResumePonto, useFinalizePonto, usePontoPendente, useMeusPontos, formatDuration, type PontoEletronico } from "@/hooks/usePontoEletronico";
+import {
+  useApprovePonto,
+  useCreatePonto,
+  useDeleteAllPontos,
+  useDeletePonto,
+  useFinalizePonto,
+  useMeusPontos,
+  usePausePonto,
+  usePontoPendente,
+  useRejectPonto,
+  useResumePonto,
+  formatDuration,
+  type PontoEletronico,
+} from "@/hooks/usePontoEletronico";
+import { useHasPermission } from "@/hooks/usePermissions";
+import { useIsAdminOrModerador } from "@/hooks/useRoles";
 import { useViaturas } from "@/hooks/useViaturas";
 import { patentes, prefixosViaturas } from "@/lib/constants";
 
@@ -46,6 +88,19 @@ const BatePonto = () => {
   const pausePonto = usePausePonto();
   const resumePonto = useResumePonto();
   const finalizePonto = useFinalizePonto();
+
+  const approvePonto = useApprovePonto();
+  const rejectPonto = useRejectPonto();
+  const deletePonto = useDeletePonto();
+  const deleteAllPontos = useDeleteAllPontos();
+
+  const { data: canManagePermission = false } = useHasPermission("gerenciar_ponto", user?.id);
+  const { hasRole: isAdminOrModerador } = useIsAdminOrModerador(user?.id);
+  const canManagePonto = canManagePermission || isAdminOrModerador;
+
+  // Proteção extra para "Deletar todos"
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllPhrase, setDeleteAllPhrase] = useState("");
 
   const totalSteps = 3;
 
@@ -251,10 +306,88 @@ const BatePonto = () => {
                 <h1 className="font-display text-3xl font-bold mb-2">Meus Pontos</h1>
                 <p className="text-muted-foreground">Histórico de pontos eletrônicos</p>
               </div>
-              <Button variant="outline" onClick={() => setShowMeusPontos(false)} className="gap-2">
-                <ChevronLeft className="h-4 w-4" />
-                Voltar
-              </Button>
+              <div className="flex items-center gap-2">
+                {canManagePonto && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setDeleteAllPhrase("");
+                        setDeleteAllOpen(true);
+                      }}
+                      className="gap-2"
+                      disabled={deleteAllPontos.isPending}
+                    >
+                      {deleteAllPontos.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                      <Trash2 className="h-4 w-4" />
+                      Deletar todos
+                    </Button>
+
+                    <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Deletar todos os pontos?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação é irreversível. Para confirmar, digite <strong>DELETAR</strong> abaixo.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <div className="space-y-2">
+                          <Input
+                            value={deleteAllPhrase}
+                            onChange={(e) => setDeleteAllPhrase(e.target.value)}
+                            placeholder='Digite "DELETAR"'
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Dica: você só conseguirá confirmar quando a frase estiver correta.
+                          </p>
+                        </div>
+
+                        <AlertDialogFooter>
+                          <AlertDialogCancel
+                            onClick={() => {
+                              setDeleteAllOpen(false);
+                              setDeleteAllPhrase("");
+                            }}
+                          >
+                            Cancelar
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              if (deleteAllPhrase.trim().toUpperCase() !== "DELETAR") return;
+                              try {
+                                await deleteAllPontos.mutateAsync();
+                                toast({ title: "Pontos deletados", description: "Todos os pontos foram removidos." });
+                                setDeleteAllOpen(false);
+                                setDeleteAllPhrase("");
+                                setSelectedPonto(null);
+                              } catch (error: any) {
+                                toast({
+                                  title: "Erro",
+                                  description: error?.message || "Erro ao deletar pontos.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            disabled={
+                              deleteAllPhrase.trim().toUpperCase() !== "DELETAR" || deleteAllPontos.isPending
+                            }
+                          >
+                            Confirmar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
+
+                <Button variant="outline" onClick={() => setShowMeusPontos(false)} className="gap-2">
+                  <ChevronLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+              </div>
             </div>
 
             <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
@@ -417,6 +550,84 @@ const BatePonto = () => {
                             <p className="bg-background/50 p-3 rounded-lg">{selectedPonto.motivo_recusa}</p>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {selectedPonto.status === "pendente" && canManagePonto && (
+                      <div className="flex gap-2 mt-6 pt-4 border-t border-border/50">
+                        <Button
+                          className="gap-2 bg-success hover:bg-success/90"
+                          onClick={async () => {
+                            try {
+                              await approvePonto.mutateAsync(selectedPonto.id);
+                              toast({ title: "Ponto aprovado", description: "O ponto foi aprovado com sucesso." });
+                              setSelectedPonto(null);
+                            } catch (error: any) {
+                              toast({
+                                title: "Erro",
+                                description: error?.message || "Erro ao aprovar ponto.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          disabled={approvePonto.isPending}
+                        >
+                          <Check className="h-4 w-4" />
+                          Aprovar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="gap-2"
+                          onClick={async () => {
+                            try {
+                              const motivo = window.prompt("Motivo da reprovação (opcional):") || undefined;
+                              await rejectPonto.mutateAsync({ pontoId: selectedPonto.id, motivo });
+                              toast({
+                                title: "Ponto reprovado",
+                                description: "O ponto foi reprovado.",
+                                variant: "destructive",
+                              });
+                              setSelectedPonto(null);
+                            } catch (error: any) {
+                              toast({
+                                title: "Erro",
+                                description: error?.message || "Erro ao reprovar ponto.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          disabled={rejectPonto.isPending}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Reprovar
+                        </Button>
+                      </div>
+                    )}
+
+                    {canManagePonto && (
+                      <div className="flex gap-2 mt-4">
+                        <Button
+                          variant="destructive"
+                          className="gap-2"
+                          onClick={async () => {
+                            if (!confirm("Tem certeza que deseja excluir este ponto?")) return;
+                            try {
+                              await deletePonto.mutateAsync(selectedPonto.id);
+                              toast({ title: "Ponto excluído", description: "O ponto foi removido." });
+                              setSelectedPonto(null);
+                            } catch (error: any) {
+                              toast({
+                                title: "Erro",
+                                description: error?.message || "Erro ao excluir ponto.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          disabled={deletePonto.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Apagar este ponto
+                        </Button>
                       </div>
                     )}
                   </div>

@@ -7,8 +7,30 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronRight, ChevronLeft, Send, User, Car, FileText, Scale, Camera, Loader2, X, Upload, Clock, LogIn, Eye, Download } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronLeft,
+  Send,
+  User,
+  Car,
+  FileText,
+  Scale,
+  Camera,
+  Loader2,
+  X,
+  Upload,
+  Clock,
+  LogIn,
+  Eye,
+  Download,
+} from "lucide-react";
 import { useCreateAIT, useMeusAITs, type AIT as AITType } from "@/hooks/useAITs";
 import { useAuth } from "@/hooks/useAuth";
 import { patentes, artigos, providencias, prefixosViaturas } from "@/lib/constants";
@@ -59,6 +81,7 @@ const AIT = () => {
   const [uploading, setUploading] = useState(false);
   const [showMeusAITs, setShowMeusAITs] = useState(false);
   const [selectedMeusAIT, setSelectedMeusAIT] = useState<AITType | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, loading: authLoading } = useAuth();
   const createAIT = useCreateAIT();
@@ -391,6 +414,216 @@ const AIT = () => {
                 </div>
               )}
             </div>
+
+            {selectedMeusAIT && (
+              <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-card rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="font-display text-2xl font-bold">Detalhes do AIT #{selectedMeusAIT.numero_ait}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Criado em {new Date(selectedMeusAIT.created_at).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(selectedMeusAIT.status)}
+                      <Button size="icon" variant="ghost" onClick={() => setSelectedMeusAIT(null)}>
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg">Policial Responsável</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Graduação</p>
+                          <p className="font-semibold">{selectedMeusAIT.graduacao}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <p className="text-sm text-muted-foreground">Nome</p>
+                          <p className="font-semibold">{selectedMeusAIT.nome_agente}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg">Viatura e Equipe</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Viatura</p>
+                          <p className="font-semibold">{selectedMeusAIT.viatura}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Motorista</p>
+                          <p className="font-semibold">{selectedMeusAIT.primeiro_homem}</p>
+                        </div>
+                        {selectedMeusAIT.segundo_homem && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Encarregado</p>
+                            <p className="font-semibold">{selectedMeusAIT.segundo_homem}</p>
+                          </div>
+                        )}
+                        {selectedMeusAIT.terceiro_homem && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">3º Homem</p>
+                            <p className="font-semibold">{selectedMeusAIT.terceiro_homem}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg">Infrações e Providências</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Artigos Infringidos</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMeusAIT.artigos_infringidos?.map((art) => (
+                              <span key={art} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                                {art}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Providências</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMeusAIT.providencias_tomadas?.map((prov) => (
+                              <span key={prov} className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                                {prov}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+                      <h4 className="font-semibold text-primary text-lg flex items-center gap-2">
+                        <Camera className="h-5 w-5" />
+                        Imagens, Data e Relatório
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Data da ocorrência</p>
+                          <p className="font-semibold">
+                            {selectedMeusAIT.data_inicio ? new Date(selectedMeusAIT.data_inicio).toLocaleString("pt-BR") : "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Criado em</p>
+                          <p className="font-semibold">{new Date(selectedMeusAIT.created_at).toLocaleString("pt-BR")}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Relatório</p>
+                        <p className="bg-background/50 p-3 rounded-lg whitespace-pre-wrap">
+                          {selectedMeusAIT.relatorio?.trim() ? selectedMeusAIT.relatorio : "-"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Imagens</p>
+                        {selectedMeusAIT.imagens && selectedMeusAIT.imagens.length > 0 ? (
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                            {selectedMeusAIT.imagens.map((imgPath, idx) => {
+                              const imageUrl = imgPath.startsWith("http")
+                                ? imgPath
+                                : supabase.storage.from("ait-images").getPublicUrl(imgPath).data.publicUrl;
+                              const alt = `Imagem do AIT #${selectedMeusAIT.numero_ait} (${idx + 1})`;
+
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setPreviewImage({ url: imageUrl, alt })}
+                                  className="h-20 w-20 sm:h-24 sm:w-24 rounded-lg overflow-hidden border bg-background/30 hover:bg-background/50 transition-colors"
+                                  title="Ver imagem"
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={alt}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      e.currentTarget.src = "/placeholder.svg";
+                                    }}
+                                  />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Nenhuma imagem anexada.</p>
+                        )}
+                      </div>
+
+                      {(selectedMeusAIT.aprovador_nome || selectedMeusAIT.motivo_recusa) && (
+                        <div
+                          className={`rounded-xl p-5 space-y-4 ${
+                            selectedMeusAIT.status === "recusado" ? "bg-destructive/10" : "bg-success/10"
+                          }`}
+                        >
+                          <h4
+                            className={`font-semibold text-lg ${
+                              selectedMeusAIT.status === "recusado" ? "text-destructive" : "text-success"
+                            }`}
+                          >
+                            {selectedMeusAIT.status === "aprovado" ? "Aprovação" : "Reprovação"}
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {selectedMeusAIT.aprovador_nome && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">
+                                  {selectedMeusAIT.status === "aprovado" ? "Aprovado por" : "Reprovado por"}
+                                </p>
+                                <p className="font-semibold">{selectedMeusAIT.aprovador_nome}</p>
+                              </div>
+                            )}
+                            {selectedMeusAIT.data_aprovacao && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Data</p>
+                                <p className="font-semibold">
+                                  {new Date(selectedMeusAIT.data_aprovacao).toLocaleDateString("pt-BR")}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {selectedMeusAIT.motivo_recusa && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">Motivo</p>
+                              <p className="bg-background/50 p-3 rounded-lg">{selectedMeusAIT.motivo_recusa}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+                      <DialogContent className="max-w-3xl">
+                        <DialogHeader>
+                          <DialogTitle>Imagem do AIT</DialogTitle>
+                        </DialogHeader>
+                        {previewImage && (
+                          <div className="rounded-lg overflow-hidden border bg-background">
+                            <img
+                              src={previewImage.url}
+                              alt={previewImage.alt}
+                              className="w-full h-auto max-h-[70vh] object-contain"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </MainLayout>
