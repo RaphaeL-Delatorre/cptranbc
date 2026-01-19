@@ -12,6 +12,7 @@ export type CTBArticle = {
   apreensao: boolean;
   revogacao: boolean;
   prisao: boolean;
+  ordem: number;
   created_at: string;
   updated_at: string;
 };
@@ -30,6 +31,7 @@ export const useCTBArticles = () => {
         .from("ctb_artigos")
         .select("*")
         .order("categoria", { ascending: true })
+        .order("ordem", { ascending: true })
         .order("artigo", { ascending: true });
 
       if (error) throw error;
@@ -86,6 +88,30 @@ export const useDeleteCTBArticle = () => {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("ctb_artigos").delete().eq("id", id);
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ctb-artigos"] });
+    },
+  });
+};
+
+export const useReorderCTBArticles = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ categoria, orderedIds }: { categoria: string; orderedIds: string[] }) => {
+      // Update ordem sequentially within the given category.
+      const results = await Promise.all(
+        orderedIds.map((id, idx) =>
+          supabase
+            .from("ctb_artigos")
+            .update({ ordem: idx })
+            .eq("id", id)
+            .eq("categoria", categoria)
+        )
+      );
+
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) throw firstError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ctb-artigos"] });

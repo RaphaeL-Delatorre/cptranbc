@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles } from "@/hooks/useRoles";
@@ -17,9 +24,45 @@ import {
   useCreateCTBArticle,
   useUpdateCTBArticle,
   useDeleteCTBArticle,
+  useReorderCTBArticles,
   type CTBArticle,
 } from "@/hooks/useCTB";
-import { FileText, Loader2, Plus, Search, Trash2, Edit } from "lucide-react";
+import { FileText, GripVertical, Loader2, Plus, Search, Trash2, Edit } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+const CTB_CATEGORIES = ["Documentação", "Estacionamento", "Flagrantes", "Contra a Vida"] as const;
+
+type CTBCategory = (typeof CTB_CATEGORIES)[number];
+
+const categoryStyle = (categoria: string) => {
+  switch (categoria) {
+    case "Documentação":
+      return "bg-category-doc/15 text-category-doc border-category-doc/30";
+    case "Estacionamento":
+      return "bg-category-est/15 text-category-est border-category-est/30";
+    case "Flagrantes":
+      return "bg-category-flag/15 text-category-flag border-category-flag/30";
+    case "Contra a Vida":
+      return "bg-category-vida/15 text-category-vida border-category-vida/30";
+    default:
+      return "bg-muted text-muted-foreground border-border";
+  }
+};
 
 const penalties = [
   { key: "multa", label: "Multa" },
@@ -33,7 +76,7 @@ const penalties = [
 type PenaltyKey = (typeof penalties)[number]["key"];
 
 type FormState = {
-  categoria: string;
+  categoria: CTBCategory | "";
   artigo: string;
   descricao: string;
   multa: boolean;
@@ -56,6 +99,90 @@ const emptyForm: FormState = {
   prisao: false,
 };
 
+function SortableRow({
+  article,
+  isAdmin,
+  onEdit,
+  onDelete,
+  deleting,
+}: {
+  article: CTBArticle;
+  isAdmin: boolean;
+  onEdit: (a: CTBArticle) => void;
+  onDelete: (id: string) => void;
+  deleting: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: article.id,
+    disabled: !isAdmin,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-muted/30 transition-colors">
+      <td className="p-4 w-10">
+        {isAdmin && (
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-border/50 bg-card hover:bg-muted/40"
+            title="Arrastar para reordenar"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </td>
+
+      <td className="p-4">
+        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border ${categoryStyle(article.categoria)}`}>
+          {article.categoria}
+        </span>
+      </td>
+      <td className="p-4 font-mono font-semibold">{article.artigo}</td>
+      <td className="p-4 text-muted-foreground">{article.descricao}</td>
+
+      {penalties.map((p) => (
+        <td key={p.key} className="p-4">
+          {article[p.key] ? (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-success/15 text-success">
+              SIM
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-destructive/15 text-destructive">
+              NÃO
+            </span>
+          )}
+        </td>
+      ))}
+
+      {isAdmin && (
+        <td className="p-4 text-right">
+          <div className="flex items-center justify-end gap-2">
+            <Button size="icon" variant="ghost" onClick={() => onEdit(article)} title="Editar">
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onDelete(article.id)}
+              title="Excluir"
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </td>
+      )}
+    </tr>
+  );
+}
+
 const CTBContent = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -66,29 +193,41 @@ const CTBContent = () => {
   const createArticle = useCreateCTBArticle();
   const updateArticle = useUpdateCTBArticle();
   const deleteArticle = useDeleteCTBArticle();
+  const reorderArticles = useReorderCTBArticles();
 
   const [search, setSearch] = useState("");
-  const [categoria, setCategoria] = useState<string>("Todas");
+  const [categoria, setCategoria] = useState<CTBCategory | null>(null);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CTBArticle | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  const categorias = useMemo(() => {
-    const set = new Set<string>();
-    artigos.forEach((a) => set.add(a.categoria));
-    return ["Todas", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [artigos]);
-
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return artigos.filter((a) => {
-      if (categoria !== "Todas" && a.categoria !== categoria) return false;
+      if (categoria && a.categoria !== categoria) return false;
       if (!term) return true;
       const hay = `${a.categoria} ${a.artigo} ${a.descricao}`.toLowerCase();
       return hay.includes(term);
     });
   }, [artigos, categoria, search]);
+
+  // Local ordering for drag & drop (only meaningful when a single category is selected)
+  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!categoria) {
+      setOrderedIds(null);
+      return;
+    }
+    setOrderedIds(filtered.map((a) => a.id));
+  }, [categoria, filtered]);
+
+  const orderedFiltered = useMemo(() => {
+    if (!categoria || !orderedIds) return filtered;
+    const byId = new Map(filtered.map((a) => [a.id, a] as const));
+    return orderedIds.map((id) => byId.get(id)).filter(Boolean) as CTBArticle[];
+  }, [categoria, filtered, orderedIds]);
 
   const stats = useMemo(() => {
     const countBy = (key: PenaltyKey) => artigos.filter((i) => Boolean(i[key])).length;
@@ -112,7 +251,7 @@ const CTBContent = () => {
   const openEdit = (a: CTBArticle) => {
     setEditing(a);
     setForm({
-      categoria: a.categoria,
+      categoria: (a.categoria as CTBCategory) ?? "",
       artigo: a.artigo,
       descricao: a.descricao,
       multa: a.multa,
@@ -127,10 +266,10 @@ const CTBContent = () => {
 
   const save = async () => {
     if (!isAdmin) return;
-    if (!form.categoria.trim() || !form.artigo.trim() || !form.descricao.trim()) {
+    if (!form.categoria || !form.artigo.trim() || !form.descricao.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha categoria, artigo e descrição.",
+        description: "Selecione a categoria e preencha artigo e descrição.",
         variant: "destructive",
       });
       return;
@@ -141,7 +280,7 @@ const CTBContent = () => {
         await updateArticle.mutateAsync({ id: editing.id, patch: form });
         toast({ title: "Artigo atualizado" });
       } else {
-        await createArticle.mutateAsync(form);
+        await createArticle.mutateAsync(form as any);
         toast({ title: "Artigo criado" });
       }
       setOpen(false);
@@ -160,6 +299,32 @@ const CTBContent = () => {
       toast({ title: "Artigo excluído" });
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message || "Erro ao excluir.", variant: "destructive" });
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!categoria || !orderedIds || !isAdmin) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedIds.indexOf(String(active.id));
+    const newIndex = orderedIds.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const next = arrayMove(orderedIds, oldIndex, newIndex);
+    setOrderedIds(next);
+
+    try {
+      await reorderArticles.mutateAsync({ categoria, orderedIds: next });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e?.message || "Erro ao reordenar.", variant: "destructive" });
+      // Revert (best effort)
+      setOrderedIds(orderedIds);
     }
   };
 
@@ -208,29 +373,39 @@ const CTBContent = () => {
 
       <div className="bg-card rounded-xl shadow-card border border-border/50">
         <div className="p-6 border-b border-border/50 space-y-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar..."
-                className="pl-9"
-              />
-            </div>
+          <div className="relative w-full max-w-2xl">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por artigo ou descrição..."
+              className="pl-9"
+            />
+          </div>
 
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Categoria</div>
             <div className="flex flex-wrap gap-2">
-              {categorias.map((c) => (
-                <Button
-                  key={c}
-                  size="sm"
-                  variant={categoria === c ? "default" : "outline"}
-                  onClick={() => setCategoria(c)}
-                >
-                  {c}
-                </Button>
-              ))}
+              {CTB_CATEGORIES.map((c) => {
+                const active = categoria === c;
+                return (
+                  <Button
+                    key={c}
+                    size="sm"
+                    variant="outline"
+                    className={`${categoryStyle(c)} ${active ? "ring-1 ring-ring" : ""}`}
+                    onClick={() => setCategoria((prev) => (prev === c ? null : c))}
+                  >
+                    {c}
+                  </Button>
+                );
+              })}
             </div>
+            {isAdmin && (
+              <p className="text-xs text-muted-foreground">
+                Dica: selecione uma categoria para habilitar o “arrastar e soltar” e ordenar.
+              </p>
+            )}
           </div>
 
           {!isAdmin && (
@@ -247,61 +422,46 @@ const CTBContent = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-4 font-semibold text-sm">Categoria</th>
-                  <th className="text-left p-4 font-semibold text-sm">Artigo</th>
-                  <th className="text-left p-4 font-semibold text-sm">Descrição</th>
-                  {penalties.map((p) => (
-                    <th key={p.key} className="text-left p-4 font-semibold text-sm whitespace-nowrap">
-                      {p.label}
-                    </th>
-                  ))}
-                  {isAdmin && <th className="text-right p-4 font-semibold text-sm">Ações</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {filtered.map((a) => (
-                  <tr key={a.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4">{a.categoria}</td>
-                    <td className="p-4 font-mono font-semibold">{a.artigo}</td>
-                    <td className="p-4 text-muted-foreground">{a.descricao}</td>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-4 font-semibold text-sm w-10">&nbsp;</th>
+                    <th className="text-left p-4 font-semibold text-sm">Categoria</th>
+                    <th className="text-left p-4 font-semibold text-sm">Artigo</th>
+                    <th className="text-left p-4 font-semibold text-sm">Descrição</th>
                     {penalties.map((p) => (
-                      <td key={p.key} className="p-4">
-                        {a[p.key] ? (
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-success/15 text-success">
-                            SIM
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
-                            NÃO
-                          </span>
-                        )}
-                      </td>
+                      <th key={p.key} className="text-left p-4 font-semibold text-sm whitespace-nowrap">
+                        {p.label}
+                      </th>
                     ))}
-                    {isAdmin && (
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(a)} title="Editar">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => remove(a.id)}
-                            title="Excluir"
-                            disabled={deleteArticle.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    )}
+                    {isAdmin && <th className="text-right p-4 font-semibold text-sm">Ações</th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <SortableContext
+                  items={(categoria ? orderedFiltered : filtered).map((a) => a.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <tbody className="divide-y divide-border/50">
+                    {(categoria ? orderedFiltered : filtered).map((a) => (
+                      <SortableRow
+                        key={a.id}
+                        article={a}
+                        isAdmin={isAdmin && Boolean(categoria)}
+                        onEdit={openEdit}
+                        onDelete={remove}
+                        deleting={deleteArticle.isPending}
+                      />
+                    ))}
+                  </tbody>
+                </SortableContext>
+              </table>
+            </DndContext>
           </div>
         )}
       </div>
@@ -315,12 +475,28 @@ const CTBContent = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Categoria</Label>
-              <Input value={form.categoria} onChange={(e) => setForm((p) => ({ ...p, categoria: e.target.value }))} />
+              <Select
+                value={form.categoria}
+                onValueChange={(v) => setForm((p) => ({ ...p, categoria: v as CTBCategory }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CTB_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
             <div>
               <Label>Artigo</Label>
               <Input value={form.artigo} onChange={(e) => setForm((p) => ({ ...p, artigo: e.target.value }))} />
             </div>
+
             <div className="md:col-span-2">
               <Label>Descrição</Label>
               <Input value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} />

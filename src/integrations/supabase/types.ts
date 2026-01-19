@@ -198,6 +198,7 @@ export type Database = {
           descricao: string
           id: string
           multa: boolean
+          ordem: number
           prisao: boolean
           remocao: boolean
           retencao: boolean
@@ -213,6 +214,7 @@ export type Database = {
           descricao: string
           id?: string
           multa?: boolean
+          ordem?: number
           prisao?: boolean
           remocao?: boolean
           retencao?: boolean
@@ -228,6 +230,7 @@ export type Database = {
           descricao?: string
           id?: string
           multa?: boolean
+          ordem?: number
           prisao?: boolean
           remocao?: boolean
           retencao?: boolean
