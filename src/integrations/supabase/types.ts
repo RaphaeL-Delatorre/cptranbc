@@ -188,6 +188,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ctb_artigos: {
+        Row: {
+          apreensao: boolean
+          artigo: string
+          categoria: string
+          created_at: string
+          created_by: string | null
+          descricao: string
+          id: string
+          multa: boolean
+          prisao: boolean
+          remocao: boolean
+          retencao: boolean
+          revogacao: boolean
+          updated_at: string
+        }
+        Insert: {
+          apreensao?: boolean
+          artigo: string
+          categoria: string
+          created_at?: string
+          created_by?: string | null
+          descricao: string
+          id?: string
+          multa?: boolean
+          prisao?: boolean
+          remocao?: boolean
+          retencao?: boolean
+          revogacao?: boolean
+          updated_at?: string
+        }
+        Update: {
+          apreensao?: boolean
+          artigo?: string
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          id?: string
+          multa?: boolean
+          prisao?: boolean
+          remocao?: boolean
+          retencao?: boolean
+          revogacao?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gallery_images: {
         Row: {
           created_at: string
