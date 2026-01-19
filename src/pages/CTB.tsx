@@ -3,7 +3,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCTBArticles, type CTBArticle } from "@/hooks/useCTB";
-import { FileText, Loader2, Search, Filter } from "lucide-react";
+import { FileText, Loader2, Search, Filter, BadgeDollarSign, Hand, Truck, AlertTriangle, Ban, Shield } from "lucide-react";
 
 const CTB_CATEGORIES = ["Documentação", "Estacionamento", "Flagrantes", "Contra a Vida"] as const;
 
@@ -92,31 +92,94 @@ const CTB = () => {
 
       <main className="py-12 bg-background">
         <div className="container mx-auto px-4 space-y-6">
-          {/* Stats */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-primary" />
+          {/* Cards (4 em cima, 3 em baixo) */}
+          <section className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-category-doc/15 flex items-center justify-center">
+                    <FileText className="h-6 w-6 text-category-doc" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                    <p className="text-sm text-muted-foreground">Total de Artigos</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                  <p className="text-sm text-muted-foreground">Total de Artigos</p>
+              </div>
+
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center">
+                    <BadgeDollarSign className="h-6 w-6 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.multa}</p>
+                    <p className="text-sm text-muted-foreground">Com Multa</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-info/15 flex items-center justify-center">
+                    <Hand className="h-6 w-6 text-info" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.retencao}</p>
+                    <p className="text-sm text-muted-foreground">Com Retenção</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-warning/15 flex items-center justify-center">
+                    <Truck className="h-6 w-6 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.remocao}</p>
+                    <p className="text-sm text-muted-foreground">Com Remoção</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-              <p className="text-sm text-muted-foreground">Com Multa</p>
-              <p className="text-2xl font-bold text-foreground">{stats.multa}</p>
-            </div>
-            <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-              <p className="text-sm text-muted-foreground">Com Retenção</p>
-              <p className="text-2xl font-bold text-foreground">{stats.retencao}</p>
-            </div>
-            <div className="bg-card rounded-xl p-6 shadow-card border border-border/50">
-              <p className="text-sm text-muted-foreground">Com Remoção</p>
-              <p className="text-2xl font-bold text-foreground">{stats.remocao}</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.apreensao}</p>
+                    <p className="text-sm text-muted-foreground">Com Apreensão</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-violet/15 flex items-center justify-center">
+                    <Ban className="h-6 w-6 text-violet" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.revogacao}</p>
+                    <p className="text-sm text-muted-foreground">Com Revogação</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-xl p-5 shadow-card border border-border/50 col-span-2 md:col-span-1">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-destructive/15 flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stats.prisao}</p>
+                    <p className="text-sm text-muted-foreground">Com Prisão</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -182,9 +245,7 @@ const CTB = () => {
                 </div>
               </div>
 
-              <p className="text-sm text-muted-foreground">
-                Exibindo {filtered.length} de {artigos.length} artigos
-              </p>
+              <p className="text-sm text-muted-foreground">Exibindo {filtered.length} de {artigos.length} artigos</p>
             </div>
           </section>
 
